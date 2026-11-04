@@ -10,9 +10,9 @@ x509_extensions     = v3_ca
 C                   = BR
 ST                  = Bahia
 L                   = Salvador
-O                   = XYZW Tecnologia e Solucoes Digitais S.A.
-OU                  = Diretoria de Seguranca da Informacao e PKI Corporativa
-CN                  = XYZW Root CA
+O                   = Miguelito Seguranca e Tecnologia Ltda
+OU                  = Seguranca da Informacao e PKI Interna
+CN                  = Miguelito Root CA
 
 [ v3_ca ]
 subjectKeyIdentifier   = hash

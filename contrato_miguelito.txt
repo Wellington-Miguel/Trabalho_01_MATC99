@@ -1,0 +1,58 @@
+INSTRUMENTO PARTICULAR DE PRESTAÇÃO DE SERVIÇOS DE INFRAESTRUTURA E SEGURANÇA
+CONTRATO COMERCIAL Nº 2026/00849-MST
+
+IDENTIFICAÇÃO DAS PARTES
+
+CONTRATANTE: MIGUELITO SEGURANÇA E TECNOLOGIA LTDA.
+CNPJ: 14.382.910/0001-55
+Endereço: Av. Tancredo Neves, nº 2539, Ed. CEO Salvador Shopping, Sala 1104,
+Caminho das Árvores, Salvador - BA, CEP 41820-021.
+
+CONTRATADA: PARCEIRO INFRAESTRUTURA E CLOUD COMPUTING LTDA.
+CNPJ: 67.419.002/0001-83
+Domínio Certificado: parceiro.miguelito.com.br
+Endereço: Rua Olimpíadas, nº 205, 14º Andar, Vila Olímpia, São Paulo - SP, CEP 04551-000.
+
+CLÁUSULA PRIMEIRA - DO OBJETO
+1.1. O presente contrato tem por objeto a prestação de serviços de hospedagem dedicada
+em nuvem híbrida, operação de links redundantes de comunicação segura (IPSec/MPLS)
+e custódia de chaves criptográficas em módulo HSM para atender aos sistemas internos
+da CONTRATANTE.
+
+CLÁUSULA SEGUNDA - DOS VALORES E CONDIÇÕES DE PAGAMENTO
+2.1. Pelos serviços prestados, a CONTRATANTE pagará à CONTRATADA o valor total de
+R$ 1.450.000,00 (um milhão, quatrocentos e cinquenta mil reais), dividido em 12 (doze)
+parcelas mensais fixas de R$ 120.833,33 (cento e vinte mil, oitocentos e trinta e três
+reais e trinta e três centavos).
+2.2. Os pagamentos vencem todo dia 10 (dez) de cada mês subsequente ao mês de
+competência, mediante transferência bancária (TED ou PIX) para a conta da CONTRATADA:
+Banco: 001 (Banco do Brasil) | Agência: 3401-2 | Conta Corrente: 99842-X.
+
+CLÁUSULA TERCEIRA - DOS NÍVEIS DE SERVIÇO (SLA) E MULTA
+3.1. A CONTRATADA compromete-se a manter disponibilidade mensal mínima de 99,98%
+para os ambientes de produção.
+3.2. O descumprimento do SLA ou a ocorrência de incidente de segurança por falha da
+CONTRATADA sujeitará a infratora à multa de 15% (quinze por cento) sobre o valor
+total do contrato (R$ 217.500,00), sem prejuízo de apuração de perdas e danos.
+
+CLÁUSULA QUARTA - DA VALIDADE DIGITAL E CRIPTOGRAFIA
+4.1. O envio eletrônico deste contrato e de seus termos aditivos deve ser protegido
+por cifragem simétrica autenticada no modo AES-256-GCM.
+4.2. Para fins de não-repúdio e auditoria interna, este documento somente terá
+validade jurídica se assinado digitalmente com chave RSA-SHA256 vinculada a um
+certificado X.509 emitido pela Autoridade Certificadora interna da contratante
+("Miguelito Root CA").
+
+CLÁUSULA QUINTA - DO FORO
+5.1. Fica eleito o Foro da Comarca de Salvador - BA para dirimir eventuais dúvidas
+ou litígios decorrentes deste instrumento.
+
+Salvador - BA, 04 de novembro de 2026.
+
+_______________________________________________________
+MIGUELITO SEGURANÇA E TECNOLOGIA LTDA.
+CNPJ: 14.382.910/0001-55
+
+_______________________________________________________
+PARCEIRO INFRAESTRUTURA E CLOUD COMPUTING LTDA.
+CN: parceiro.miguelito.com.br

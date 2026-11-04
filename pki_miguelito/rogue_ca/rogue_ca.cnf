@@ -8,10 +8,10 @@ x509_extensions     = v3_ca
 
 [ dn ]
 C                   = XX
-ST                  = Offshore
-L                   = Darknet
-O                   = Rogue Shadow Trust Authority Ltd
-OU                  = Unverified Root Certification Authority
+ST                  = External
+L                   = Unknown
+O                   = Rogue Unverified Authority
+OU                  = Untrusted PKI
 CN                  = Rogue Root CA
 
 [ v3_ca ]

@@ -11,16 +11,15 @@ C                   = BR
 ST                  = Sao Paulo
 L                   = Sao Paulo
 O                   = Parceiro Infraestrutura e Cloud Computing Ltda
-OU                  = Operacoes B2B e Contratos Digitais
-CN                  = parceiro.xyzw.com
+OU                  = Contratos Digitais B2B
+CN                  = parceiro.miguelito.com.br
 
 [ v3_req ]
 basicConstraints       = critical, CA:FALSE
 keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment
-extendedKeyUsage       = clientAuth, emailProtection, codeSigning
 subjectAltName         = @alt_names
 
-[ v3_leaf ]
+[ v3_folha ]
 subjectKeyIdentifier   = hash
 authorityKeyIdentifier = keyid,issuer
 basicConstraints       = critical, CA:FALSE
@@ -29,4 +28,5 @@ extendedKeyUsage       = clientAuth, emailProtection, codeSigning
 subjectAltName         = @alt_names
 
 [ alt_names ]
-DNS.1 = parceiro.xyzw.com
+DNS.1 = parceiro.miguelito.com.br
+DNS.2 = parceiro.xyzw.com

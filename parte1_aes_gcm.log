@@ -1,64 +1,31 @@
-[2026-11-04 14:47:30.607] [INFO    ] ================================================================================
-[2026-11-04 14:47:30.608] [INFO    ] INICIANDO AUDITORIA CRIPTOGRÁFICA - PARTE I: AES-256-GCM (AEAD)
-[2026-11-04 14:47:30.608] [INFO    ] ================================================================================
-[2026-11-04 14:47:30.609] [INFO    ] [PASSO 1] Carregamento e Inspeção Forense do Contrato Original
-[2026-11-04 14:47:30.613] [INFO    ] Documento carregado com sucesso: 'contrato_xyzw.txt'
-[2026-11-04 14:47:30.613] [INFO    ]   -> Tamanho original (Plaintext): 3621 bytes
-[2026-11-04 14:47:30.614] [INFO    ]   -> SHA-256 (Plaintext)         : 6cb64ddc37de25a27c614b37e45de1112a01020e382e5b8e255125d9fb715783
-[2026-11-04 14:47:30.614] [INFO    ] --------------------------------------------------------------------------------
-[2026-11-04 14:47:30.614] [INFO    ] [PASSO 2] Cifragem Autenticada AES-256-GCM
-[2026-11-04 14:47:30.618] [INFO    ] Cifragem AES-256-GCM concluída e gravada em 'contrato_xyzw.enc'.
-[2026-11-04 14:47:30.619] [INFO    ]   -> Algoritmo / Modo            : AES-256-GCM (NIST SP 800-38D)
-[2026-11-04 14:47:30.619] [INFO    ]   -> Chave Simétrica (256 bits)  : 35f0d9e19b1d07290979d3a3817bbfb76fa2c7ce3b0148c01993d7291c82e686
-[2026-11-04 14:47:30.619] [INFO    ]   -> Nonce / IV (96 bits / 12B)  : a6af226d6502ae02abf5af0e
-[2026-11-04 14:47:30.620] [INFO    ]   -> Dados Associados (AAD)      : MATC99-UFBA|XYZW-TECNOLOGIA|CONTRATO-2026-00849|AES-256-GCM
-[2026-11-04 14:47:30.620] [INFO    ]   -> Tamanho do Ciphertext       : 3621 bytes
-[2026-11-04 14:47:30.620] [INFO    ]   -> Authentication Tag (128b/16B): e14ca57e1fd1883fac6e6e741d00da60
-[2026-11-04 14:47:30.621] [INFO    ]   -> Tamanho Total (.enc)        : 3649 bytes (12B Nonce + 3621B CT + 16B Tag)
-[2026-11-04 14:47:30.621] [INFO    ]   -> SHA-256 do Arquivo (.enc)   : 46f61c03d7f959507b168d5db0d88495b63a1741ad2e570fd12527a8f99e3a5a
-[2026-11-04 14:47:30.621] [INFO    ] --------------------------------------------------------------------------------
-[2026-11-04 14:47:30.621] [INFO    ] [PASSO 3] Descriptografia Legítima e Conferência de Integridade Byte a Byte
-[2026-11-04 14:47:30.626] [INFO    ]   -> Authentication Tag verificada : VÁLIDA (128 bits íntegros)
-[2026-11-04 14:47:30.627] [INFO    ]   -> Comparação direta (bytes ==)  : True (3621 == 3621 bytes)
-[2026-11-04 14:47:30.627] [INFO    ]   -> SHA-256 Original              : 6cb64ddc37de25a27c614b37e45de1112a01020e382e5b8e255125d9fb715783
-[2026-11-04 14:47:30.627] [INFO    ]   -> SHA-256 Recuperado            : 6cb64ddc37de25a27c614b37e45de1112a01020e382e5b8e255125d9fb715783
-[2026-11-04 14:47:30.627] [INFO    ]   -> [SUCESSO] Integridade e confidencialidade comprovadas sem perda de bits.
-[2026-11-04 14:47:30.628] [INFO    ] --------------------------------------------------------------------------------
-[2026-11-04 14:47:30.628] [INFO    ] [CENÁRIO DE FALHA 1] Teste de Adulteração de 1 Byte no Ciphertext (Bit-Flipping)
-[2026-11-04 14:47:30.628] [INFO    ] --------------------------------------------------------------------------------
-[2026-11-04 14:47:30.629] [INFO    ]   -> Posição alterada no Ciphertext : Offset 1810 (0x0712)
-[2026-11-04 14:47:30.629] [INFO    ]   -> Valor do byte original         : 0x59 (bin: 01011001)
-[2026-11-04 14:47:30.629] [INFO    ]   -> Valor após XOR 0x01 (Bit-Flip) : 0x58 (bin: 01011000)
-[2026-11-04 14:47:30.629] [INFO    ]   -> Tentando decifrar pacote adulterado com a chave legítima...
-[2026-11-04 14:47:30.636] [WARNING ]   -> [EXCEÇÃO CAPTURADA] Tipo: cryptography.exceptions.InvalidTag | Mensagem: cryptography.exceptions.InvalidTag
-[2026-11-04 14:47:30.636] [INFO    ]   -> [BLOQUEIO EFETIVO] Decifragem abortada antes da liberação do texto em claro! O polinômio GHASH em GF(2^128) produziu uma Tag divergente da Tag anexada.
-[2026-11-04 14:47:30.636] [INFO    ] --------------------------------------------------------------------------------
-[2026-11-04 14:47:30.637] [INFO    ] [CENÁRIO DE FALHA 2] Tentativa de Decifragem com Chave Simétrica Incorreta
-[2026-11-04 14:47:30.637] [INFO    ] --------------------------------------------------------------------------------
-[2026-11-04 14:47:30.637] [INFO    ]   -> Chave Legítima (256 bits)      : 35f0d9e19b1d07290979d3a3817bbfb76fa2c7ce3b0148c01993d7291c82e686
-[2026-11-04 14:47:30.638] [INFO    ]   -> Chave Espúria  (256 bits)      : 5853588cf0102128f840c16ee6e549b17c450d0823f6c0bb8c62125ddc8b4f82
-[2026-11-04 14:47:30.638] [INFO    ]   -> Tentando decifrar o arquivo 'contrato_xyzw.enc' com a chave espúria...
-[2026-11-04 14:47:30.639] [WARNING ]   -> [EXCEÇÃO CAPTURADA] Tipo: cryptography.exceptions.InvalidTag | Mensagem: cryptography.exceptions.InvalidTag
-[2026-11-04 14:47:30.640] [INFO    ]   -> [BLOQUEIO EFETIVO] A subchave de hash H' = E(K', 0^128) e a máscara E(K', J_0) derivadas da chave espúria K' são completamente distintas das originais, invalidando a verificação da Tag em tempo constante.
-[2026-11-04 14:47:30.640] [INFO    ] ================================================================================
-[2026-11-04 14:47:30.640] [INFO    ] FUNDAMENTAÇÃO MATEMÁTICA: COMO O GHASH IMPEDE ATAQUES DE ALTERAÇÃO DE CONTEÚDO
-[2026-11-04 14:47:30.640] [INFO    ] ================================================================================
-[2026-11-04 14:47:30.641] [INFO    ]   1. Corpo Finito GF(2^128): O GHASH opera sobre o corpo de Galois GF(2^128) definido pelo polinômio irredutível P(x) = x^128 + x^7 + x^2 + x + 1. A adição em GF(2^128) equivale à operação lógica XOR bit a bit (⊕), e a multiplicação (•) é a multiplicação polinomial módulo P(x).
-[2026-11-04 14:47:30.641] [INFO    ]   2. Subchave de Hash (H): Antes de autenticar os blocos, o receptor/emissor deriva a subchave secreta de autenticação H = E_K(0^128) aplicando a cifra de bloco AES-256 sobre um bloco de 128 bits zeros.
-[2026-11-04 14:47:30.641] [INFO    ]   3. Polinômio de Autenticação GHASH(H, A, C): Os Dados Associados (A, de m blocos de 128 bits) e o Ciphertext (C, de n blocos de 128 bits: C_1, C_2, ..., C_n), seguidos de um bloco final L = [len(A)_64 || len(C)_64], formam os coeficientes de um polinômio avaliado em H (Esquema de Horner):
-[2026-11-04 14:47:30.642] [INFO    ]        X_i = (X_{i-1} ⊕ B_i) • H  (mod P(x))
-[2026-11-04 14:47:30.642] [INFO    ]        GHASH(H, A, C) = A_1•H^{m+n+1} ⊕ ... ⊕ C_i•H^{n-i+2} ⊕ ... ⊕ C_n•H^2 ⊕ L•H
-[2026-11-04 14:47:30.642] [INFO    ]   4. Geração da Authentication Tag (T): A saída do GHASH é mascarada cifrando o contador inicial J_0 = (Nonce_96 || 0^31 || 1):
-[2026-11-04 14:47:30.643] [INFO    ]        T = GHASH(H, A, C) ⊕ E_K(J_0)
-[2026-11-04 14:47:30.643] [INFO    ]   5. Prova de Detecção de Bit-Flipping (Cenário 1): No modo CTR subjacente ao GCM, o texto cifrado é C_i = P_i ⊕ E_K(inc_32(J_0, i)). Se um adversário altera um único bit ou byte no bloco C_i para C'_i = C_i ⊕ Δ (com Δ ≠ 0), a propriedade linear do CTR faria o plaintext decifrado tornar-se P'_i = P_i ⊕ Δ. Contudo, no AES-GCM, a verificação da Tag ocorre ANTES da liberação do texto decifrado (princípio Encrypt-then-MAC). O verificador recalcula T' usando C'_i, obtendo uma diferença algébrica na Tag:
-[2026-11-04 14:47:30.643] [INFO    ]        ΔT = T' ⊕ T = Δ • H^{n-i+2}  em GF(2^128)
-[2026-11-04 14:47:30.644] [INFO    ]   Como GF(2^128) é um corpo finito (domínio de integridade sem divisores de zero), para qualquer adulteração Δ ≠ 0 e H ≠ 0, o produto Δ • H^{n-i+2} é algebricamente diferente de zero (a menos que o atacante conheça H e forje múltiplos coeficientes simultaneamente para encontrar uma raiz do polinômio, cuja probabilidade sem conhecer H é limitada a (m+n+1)/2^128 ≈ 2^{-120}). Logo, T' ≠ T com probabilidade 1 - 2^{-128}, disparando `InvalidTag`.
-[2026-11-04 14:47:30.644] [INFO    ]   6. Prova de Detecção de Chave Incorreta (Cenário 2): Com uma chave incorreta K' ≠ K, tanto a subchave H' = E_{K'}(0^128) quanto o bloco de máscara E_{K'}(J_0) comportam-se como saídas pseudoaleatórias independentes (PRP). A probabilidade de colisão T' == T é de exatamente 2^{-128} (≈ 2,93 × 10^{-39}), garantindo rejeição imediata via `InvalidTag`.
-[2026-11-04 14:47:30.644] [INFO    ] ================================================================================
-[2026-11-04 14:47:30.645] [INFO    ] RESUMO EXECUTIVO DOS TESTES DA PARTE I (AES-256-GCM)
-[2026-11-04 14:47:30.645] [INFO    ] ================================================================================
-[2026-11-04 14:47:30.645] [INFO    ]   [1] Cifragem e Decifragem Legítima (Integridade Byte-a-Byte) : APROVADO
-[2026-11-04 14:47:30.645] [INFO    ]   [2] Detecção de Bit-Flipping (1 byte alterado no Ciphertext) : APROVADO (cryptography.exceptions.InvalidTag)
-[2026-11-04 14:47:30.646] [INFO    ]   [3] Detecção de Chave Simétrica Incorreta (Chave Espúria)    : APROVADO (cryptography.exceptions.InvalidTag)
-[2026-11-04 14:47:30.646] [INFO    ]   [*] Log completo persistido em: parte1_aes_gcm.log
-[2026-11-04 14:47:30.646] [INFO    ] ================================================================================
+[2026-11-04 15:36:36.889] [INFO] === Auditoria Criptográfica - Miguelito Segurança e Tecnologia (Parte I: AES-256-GCM) ===
+[2026-11-04 15:36:36.890] [INFO] [Passo 1] Carregando o contrato original...
+[2026-11-04 15:36:36.894] [INFO] Contrato carregado: contrato_miguelito.txt (2841 bytes)
+[2026-11-04 15:36:36.895] [INFO] SHA-256 original: 9147c03987856361e26a46f794f9588fe0850329cc2eaa28d5f0fd6ffe0cfe67
+[2026-11-04 15:36:36.895] [INFO] [Passo 2] Cifrando o documento com AES-256-GCM...
+[2026-11-04 15:36:36.901] [INFO] Arquivo cifrado salvo em: contrato_miguelito.enc (2869 bytes totais)
+[2026-11-04 15:36:36.901] [INFO]   Chave AES-256 (32B) : 185c3c58dc5153a9b84ddaf0b85ec9933e52f67c44f8d150f42151a460aa8a28
+[2026-11-04 15:36:36.902] [INFO]   Nonce / IV (12B)    : 1d5d2cb6580417d1f29dbf07
+[2026-11-04 15:36:36.902] [INFO]   AAD                 : MATC99-UFBA|MIGUELITO-SEGURANCA-E-TECNOLOGIA|CONTRATO-2026-00849
+[2026-11-04 15:36:36.903] [INFO]   Ciphertext          : 2841 bytes
+[2026-11-04 15:36:36.903] [INFO]   Auth Tag (16B)      : f987ee9b9f25a4ea8cbcac904a675b94
+[2026-11-04 15:36:36.903] [INFO]   SHA-256 (.enc)      : 411df1f9eb37861b0697853141b4c19045aad70a554567a4164354135ab85d8c
+[2026-11-04 15:36:36.904] [INFO] [Passo 3] Lendo o arquivo .enc e validando a recuperação do documento...
+[2026-11-04 15:36:36.909] [INFO] Comparação de bytes (original == recuperado): True (2841 bytes)
+[2026-11-04 15:36:36.909] [INFO] SHA-256 recuperado: 9147c03987856361e26a46f794f9588fe0850329cc2eaa28d5f0fd6ffe0cfe67
+[2026-11-04 15:36:36.910] [INFO] --- [Teste de Falha 1: Adulteração de 1 byte no Ciphertext (Bit-Flipping)] ---
+[2026-11-04 15:36:36.910] [INFO] Byte modificado no offset 1420 (0x058C): 0x4B -> 0x4A
+[2026-11-04 15:36:36.910] [WARNING] Exceção capturada com sucesso: cryptography.exceptions.InvalidTag
+[2026-11-04 15:36:36.911] [INFO] Motivo: A alteração no bloco cifrado mudou o resultado do polinômio GHASH em GF(2^128). Como a tag recalculada divergiu da tag original, a decifragem foi abortada.
+[2026-11-04 15:36:36.911] [INFO] --- [Teste de Falha 2: Tentativa de Decifragem com Chave Incorreta] ---
+[2026-11-04 15:36:36.911] [INFO] Chave correta : 185c3c58dc5153a9b84ddaf0b85ec9933e52f67c44f8d150f42151a460aa8a28
+[2026-11-04 15:36:36.912] [INFO] Chave errada  : 8908f8e494c7d2089963f9ca67836a1d43bfc0a0ea511d3343b5c0a40d8df58e
+[2026-11-04 15:36:36.912] [WARNING] Exceção capturada com sucesso: cryptography.exceptions.InvalidTag
+[2026-11-04 15:36:36.913] [INFO] Motivo: Com uma chave K' diferente, tanto a subchave do GHASH H' = E_K'(0^128) quanto o bloco cifrado do contador inicial E_K'(J0) mudam completamente, invalidando a tag.
+[2026-11-04 15:36:36.913] [INFO] --- [Nota Técnica: Por que o GHASH detecta alterações no Ciphertext] ---
+[2026-11-04 15:36:36.913] [INFO] No AES-GCM, os blocos do AAD e do texto cifrado C_1..C_n funcionam como coeficientes de um polinômio avaliado na subchave secreta H = E_K(0^128) dentro do corpo finito GF(2^128), definido pelo polinômio irredutível P(x) = x^128 + x^7 + x^2 + x + 1.
+[2026-11-04 15:36:36.914] [INFO] Se um byte do bloco C_i sofre uma alteração Delta != 0 (C'_i = C_i XOR Delta), a diferença entre a tag recalculada T' e a tag original T será Delta_T = Delta * H^(n - i + 2) mod P(x). Como em um corpo finito não há divisores de zero, para Delta != 0 e H != 0 o produto nunca é zero, garantindo T' != T e disparando InvalidTag antes de entregar qualquer dado.
+[2026-11-04 15:36:36.914] [INFO] === Resumo dos Testes (Parte I) ===
+[2026-11-04 15:36:36.915] [INFO] 1. Decifragem legítima e conferência de bytes : OK
+[2026-11-04 15:36:36.915] [INFO] 2. Bloqueio de ciphertext adulterado (1 byte) : OK (cryptography.exceptions.InvalidTag)
+[2026-11-04 15:36:36.916] [INFO] 3. Bloqueio de chave simétrica incorreta      : OK (cryptography.exceptions.InvalidTag)
