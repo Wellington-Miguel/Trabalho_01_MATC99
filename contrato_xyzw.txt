@@ -1,0 +1,67 @@
+================================================================================
+         INSTRUMENTO PARTICULAR DE PRESTAÇÃO DE SERVIÇOS DE NUVEM E TI
+                        CONTRATO COMERCIAL Nº 2026/00849-XYZW
+================================================================================
+
+IDENTIFICAÇÃO DAS PARTES:
+
+CONTRATANTE: XYZW TECNOLOGIA E SOLUÇÕES DIGITAIS S.A.
+CNPJ: 14.382.910/0001-55
+Sede: Av. Tancredo Neves, nº 2539, Ed. CEO Salvador Shopping, Torre Londres,
+      Caminho das Árvores, Salvador - BA, CEP 41820-021.
+
+CONTRATADA: PARCEIRO INFRAESTRUTURA E CLOUD COMPUTING LTDA.
+CNPJ: 67.419.002/0001-83
+Domínio Corporativo Certificado: parceiro.xyzw.com
+Sede: Rua Olimpiadas, nº 205, 14º Andar, Vila Olímpia, São Paulo - SP, CEP 04551-000.
+
+--------------------------------------------------------------------------------
+CLÁUSULA PRIMEIRA - DO OBJETO
+1.1. O presente instrumento tem como objeto o fornecimento dedicado de clusters
+de processamento em nuvem híbrida, links redundantes de comunicação criptografada
+(MPLS/IPSec) e custódia de chaves em módulo HSM (FIPS 140-3 Level 3) para a
+operação dos sistemas financeiros da CONTRATANTE.
+
+CLÁUSULA SEGUNDA - DOS VALORES E CONDIÇÕES FINANCEIRAS
+2.1. Pela execução integral dos serviços descritos na Cláusula Primeira, a
+CONTRATANTE pagará à CONTRATADA o valor global de R$ 1.450.000,00 (um milhão,
+quatrocentos e cinquenta mil reais), dividido em 12 (doze) parcelas mensais,
+iguais e consecutivas de R$ 120.833,33 (cento e vinte mil, oitocentos e trinta
+e três reais e trinta e três centavos).
+2.2. Os pagamentos serão efetuados todo dia 10 (dez) de cada mês subsequente à
+prestação do serviço, mediante liquidação via TED/PIX para:
+     Banco: 001 (Banco do Brasil S.A.)
+     Agência: 3401-2 | Conta Corrente: 99842-X
+     Titular: PARCEIRO INFRAESTRUTURA E CLOUD COMPUTING LTDA.
+
+CLÁUSULA TERCEIRA - DOS NÍVEIS DE SERVIÇO (SLA) E PENALIDADES
+3.1. A CONTRATADA garante disponibilidade mínima mensal de 99,98% (noventa e nove
+vírgula noventa e oito por cento) para os serviços críticos.
+3.2. Em caso de violação de integridade, indisponibilidade não programada ou
+incidente de segurança atribuível à CONTRATADA, incidirá multa compensatória de
+15% (quinze por cento) sobre o valor global do contrato, equivalente a
+R$ 217.500,00 (duzentos e dezessete mil e quinhentos reais), sem prejuízo de
+perdas e danos apurados em perícia forense computacional.
+
+CLÁUSULA QUARTA - DA SEGURANÇA CRIPTOGRÁFICA E NÃO-REPÚDIO
+4.1. Toda tramitação eletrônica deste instrumento e de seus aditivos deverá ser
+protegida contra interceptação e adulteração em trânsito mediante cifragem
+simétrica autenticada AES-256-GCM (NIST SP 800-38D).
+4.2. A validade jurídica deste contrato depende de assinatura digital padrão
+RSA-SHA256 amparada por certificado X.509 emitido exclusivamente sob a cadeia
+de confiança da autoridade certificadora corporativa "XYZW Root CA".
+
+CLÁUSULA QUINTA - DO FORO E DISPOSIÇÕES GERAIS
+5.1. As partes elegem o Foro da Comarca de Salvador, Estado da Bahia, para
+dirimir quaisquer controvérsias oriundas deste contrato, com renúncia expressa
+a qualquer outro, por mais privilegiado que seja.
+
+Salvador - BA, 04 de Novembro de 2026.
+
+_______________________________________________________
+XYZW TECNOLOGIA E SOLUÇÕES DIGITAIS S.A. (CNPJ: 14.382.910/0001-55)
+
+_______________________________________________________
+PARCEIRO INFRAESTRUTURA E CLOUD COMPUTING LTDA. (parceiro.xyzw.com)
+================================================================================
+

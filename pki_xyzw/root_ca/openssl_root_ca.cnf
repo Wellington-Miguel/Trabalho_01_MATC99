@@ -1,0 +1,21 @@
+[ req ]
+default_bits        = 4096
+default_md          = sha256
+prompt              = no
+encrypt_key         = no
+distinguished_name  = dn
+x509_extensions     = v3_ca
+
+[ dn ]
+C                   = BR
+ST                  = Bahia
+L                   = Salvador
+O                   = XYZW Tecnologia e Solucoes Digitais S.A.
+OU                  = Diretoria de Seguranca da Informacao e PKI Corporativa
+CN                  = XYZW Root CA
+
+[ v3_ca ]
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints       = critical, CA:true, pathlen:0
+keyUsage               = critical, digitalSignature, cRLSign, keyCertSign

@@ -1,0 +1,32 @@
+[ req ]
+default_bits        = 2048
+default_md          = sha256
+prompt              = no
+encrypt_key         = no
+distinguished_name  = dn
+req_extensions      = v3_req
+
+[ dn ]
+C                   = BR
+ST                  = Sao Paulo
+L                   = Sao Paulo
+O                   = Parceiro Infraestrutura e Cloud Computing Ltda
+OU                  = Operacoes B2B e Contratos Digitais
+CN                  = parceiro.xyzw.com
+
+[ v3_req ]
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment
+extendedKeyUsage       = clientAuth, emailProtection, codeSigning
+subjectAltName         = @alt_names
+
+[ v3_leaf ]
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid,issuer
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment
+extendedKeyUsage       = clientAuth, emailProtection, codeSigning
+subjectAltName         = @alt_names
+
+[ alt_names ]
+DNS.1 = parceiro.xyzw.com
