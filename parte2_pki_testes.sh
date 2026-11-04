@@ -45,9 +45,7 @@ if [[ ! -f "${CONTRATO_BASE}" ]]; then
 fi
 cp "${CONTRATO_BASE}" "${CENARIOS_DIR}/contrato_miguelito.txt"
 
-# ------------------------------------------------------------------------------
 # 1. Criação da Root CA legítima (Miguelito Root CA) - RSA 4096 bits
-# ------------------------------------------------------------------------------
 registrar_log "INFO" "[Passo 1] Configurando a Root CA interna (Miguelito Root CA - RSA 4096 bits)..."
 
 cat > "${CA_RAIZ_DIR}/root_ca.cnf" << 'EOF'
@@ -87,9 +85,7 @@ openssl req -x509 -new -nodes \
 registrar_log "INFO" "Certificado da Miguelito Root CA emitido:"
 openssl x509 -in "${CA_RAIZ_DIR}/miguelito_root_ca.crt" -noout -subject -issuer -serial -fingerprint -sha256 | sed 's/^/  /' | tee -a "${ARQ_LOG}"
 
-# ------------------------------------------------------------------------------
 # 2. Emissão do certificado do parceiro legítimo assinado pela Miguelito Root CA
-# ------------------------------------------------------------------------------
 registrar_log "INFO" "[Passo 2] Emitindo par de chaves e certificado para o parceiro legítimo (parceiro.miguelito.com.br)..."
 
 cat > "${PARCEIRO_DIR}/parceiro.cnf" << 'EOF'
@@ -151,9 +147,7 @@ openssl x509 -in "${PARCEIRO_DIR}/parceiro.crt" -pubkey -noout > "${PARCEIRO_DIR
 registrar_log "INFO" "Certificado do parceiro legítimo assinado pela Miguelito Root CA:"
 openssl x509 -in "${PARCEIRO_DIR}/parceiro.crt" -noout -subject -issuer -serial -fingerprint -sha256 | sed 's/^/  /' | tee -a "${ARQ_LOG}"
 
-# ------------------------------------------------------------------------------
 # 3. Criação da Rogue CA (atacante) e emissão de certificado forjado
-# ------------------------------------------------------------------------------
 registrar_log "INFO" "[Passo 3] Criando a Rogue CA (não confiável) e emitindo certificado falso do parceiro..."
 
 cat > "${ROGUE_DIR}/rogue_ca.cnf" << 'EOF'
@@ -215,9 +209,7 @@ openssl x509 -in "${FALSO_DIR}/parceiro_forjado.crt" -pubkey -noout > "${FALSO_D
 registrar_log "INFO" "Certificado forjado emitido pela Rogue CA:"
 openssl x509 -in "${FALSO_DIR}/parceiro_forjado.crt" -noout -subject -issuer -serial -fingerprint -sha256 | sed 's/^/  /' | tee -a "${ARQ_LOG}"
 
-# ------------------------------------------------------------------------------
 # 4. Execução dos 3 Cenários de Auditoria
-# ------------------------------------------------------------------------------
 registrar_log "INFO" "------------------------------------------------------------------------------"
 registrar_log "INFO" "[Passo 4] Executando os Cenários de Auditoria A, B e C"
 registrar_log "INFO" "------------------------------------------------------------------------------"
