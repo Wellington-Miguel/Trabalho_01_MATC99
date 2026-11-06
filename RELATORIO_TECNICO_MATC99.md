@@ -11,8 +11,8 @@
 **Disciplina:** MATC99 — Segurança e Auditoria de Sistemas de Informação  
 **Instituição:** Universidade Federal da Bahia (UFBA)  
 **Empresa Auditada (Cenário):** Miguelito Segurança e Tecnologia Ltda.  
-**Autor:** Wellington M. J. S.  
-**Local e Data:** Salvador — BA, 04 de Novembro de 2026  
+**Autor:** Wellington Miguel de Jesus Silva  
+**Local e Data:** Salvador — BA, 06 de Novembro de 2026  
 
 </div>
 
@@ -28,7 +28,6 @@
 6. [Matriz de Decisão e Recomendações Corporativas](#6-matriz-de-decisão-e-recomendações-corporativas)
 7. [Conclusão](#7-conclusão)
 8. [Referências Bibliográficas](#8-referências-bibliográficas)
-9. [Anexo: Resposta para o Formulário de Submissão (Google Forms)](#9-anexo-resposta-para-o-formulário-de-submissão-google-forms)
 
 ---
 
@@ -341,26 +340,3 @@ Já na **Parte II**, a bateria de testes com o OpenSSL mostrou na prática a dif
 3. **MORIARTY, K. et al.** *PKCS #1: RSA Cryptography Specifications Version 2.2*. **IETF RFC 8017**, Nov. 2016. Disponível em: `https://datatracker.ietf.org/doc/html/rfc8017`.
 4. **STALLINGS, William.** *Criptografia e Segurança de Redes: Princípios e Práticas*. 8ª ed. São Paulo: Pearson, 2023.
 5. **PYTHON CRYPTOGRAPHIC AUTHORITY (PyCA).** *Cryptography Documentation — Authenticated Encryption (AESGCM)*. Disponível em: `https://cryptography.io/en/latest/hazmat/primitives/aead/`.
-
----
-
-## 9. Anexo: Resposta para o Formulário de Submissão (Google Forms)
-
-> Texto sintetizado para colar no campo obrigatório **"3. Ferramentas utilizadas"** do Google Forms:
-
-```text
-Para o desenvolvimento e execução dos testes do Trabalho 01 (MATC99 - UFBA), utilizamos um ambiente Linux Ubuntu 24.04 LTS (WSL2, Kernel 6.6.87.2) com as seguintes ferramentas e versões:
-
-1. Parte I (Proteção e Integridade com AES-256-GCM):
-   - Python 3.12.3 (também testado em Python 3.13).
-   - Biblioteca `cryptography` (v41.0.7 / v50.0.2): utilizamos a classe `AESGCM` (`cryptography.hazmat.primitives.ciphers.aead`) para realizar a cifragem e decifragem autenticada com chave de 256 bits, Nonce de 12 bytes (96 bits) e Authentication Tag de 16 bytes (128 bits), além da exceção `cryptography.exceptions.InvalidTag` para capturar as falhas nos testes de adulteração de 1 byte no ciphertext (bit-flipping) e tentativa de decifragem com chave incorreta.
-   - Módulos padrão do Python: `os.urandom` (geração de Nonces), `hashlib` (conferência de integridade via SHA-256) e `logging` (registro dos logs com timestamps).
-
-2. Parte II (PKI, Assinaturas Digitais e Cadeia de Certificação):
-   - OpenSSL 3.0.13 (CLI), utilizando os comandos:
-     * `openssl genrsa`: geração das chaves privadas RSA de 4096 bits (Miguelito Root CA e Rogue CA) e de 2048 bits (certificados do parceiro legítimo e forjado).
-     * `openssl req` e `openssl x509`: criação das requisições (CSR) e emissão dos certificados X.509 v3 com extensões `basicConstraints`, `keyUsage` e `subjectAltName`.
-     * `openssl dgst -sha256 -sign` e `openssl dgst -sha256 -verify`: geração e conferência matemática das assinaturas digitais RSA-SHA256.
-     * `openssl verify -CAfile`: validação da cadeia de certificação contra a Trust Store da empresa (`miguelito_root_ca.crt`).
-   - Script em GNU Bash com utilitários padrão do Linux (`sed` para simular a fraude de valor no Cenário B, `sha256sum` e `wc`).
-```
