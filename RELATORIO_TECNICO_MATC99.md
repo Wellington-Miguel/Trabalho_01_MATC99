@@ -329,9 +329,14 @@ Nos experimentos da **Parte II**, a construção da PKI com o OpenSSL deixou cla
 
 ## 8. Referências Bibliográficas
 
-1. **DWORKIN, Morris J.** *Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC*. **NIST Special Publication (SP) 800-38D**, National Institute of Standards and Technology, Gaithersburg, MD, Nov. 2007.
-2. **COOPER, D.; SANTESSON, S.; FARRELL, S.; BOEYEN, S.; HOUSLEY, R.; POLK, W.** *Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile*. **IETF RFC 5280**, Maio 2008. Disponível em: `https://datatracker.ietf.org/doc/html/rfc5280`.
-3. **MORIARTY, K.; KALISKI, B.; JONSSON, J.; RUSCH, A.** *PKCS #1: RSA Cryptography Specifications Version 2.2*. **IETF RFC 8017**, Nov. 2016. Disponível em: `https://datatracker.ietf.org/doc/html/rfc8017`.
-4. **NATIONAL INSTITUTE OF STANDARDS AND TECHNOLOGY (NIST).** *Secure Hash Standard (SHS)*. **FIPS PUB 180-4**, U.S. Department of Commerce, Ago. 2015.
-5. **STALLINGS, William.** *Criptografia e Segurança de Redes: Princípios e Práticas*. 8ª ed. São Paulo: Pearson Education, 2023.
-6. **PYTHON CRYPTOGRAPHIC AUTHORITY (PyCA).** *Cryptography Documentation — Authenticated Encryption with Associated Data (AESGCM)*. Disponível em: `https://cryptography.io/en/latest/hazmat/primitives/aead/`.
+COOPER, D.; SANTESSON, S.; FARRELL, S.; BOEYEN, S.; HOUSLEY, R.; POLK, W. **Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile**. [S. l.]: Internet Engineering Task Force (IETF), RFC 5280, maio 2008. Disponível em: \<https://datatracker.ietf.org/doc/html/rfc5280\>. Acesso em: 04 nov. 2026.
+
+DWORKIN, Morris J. **Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC**. Gaithersburg, MD: National Institute of Standards and Technology (NIST), Special Publication 800-38D, nov. 2007.
+
+MORIARTY, K.; KALISKI, B.; JONSSON, J.; RUSCH, A. **PKCS #1: RSA Cryptography Specifications Version 2.2**. [S. l.]: Internet Engineering Task Force (IETF), RFC 8017, nov. 2016. Disponível em: \<https://datatracker.ietf.org/doc/html/rfc8017\>. Acesso em: 04 nov. 2026.
+
+NATIONAL INSTITUTE OF STANDARDS AND TECHNOLOGY (NIST). **FIPS PUB 180-4: Secure Hash Standard (SHS)**. Gaithersburg, MD: U.S. Department of Commerce, ago. 2015.
+
+PYTHON CRYPTOGRAPHIC AUTHORITY (PyCA). **Cryptography Documentation: Authenticated Encryption with Associated Data (AESGCM)**. [S. l.]: PyCA, 2026. Disponível em: \<https://cryptography.io/en/latest/hazmat/primitives/aead/\>. Acesso em: 04 nov. 2026.
+
+STALLINGS, William. **Criptografia e segurança de redes: princípios e práticas**. 8. ed. São Paulo: Pearson Education, 2023.

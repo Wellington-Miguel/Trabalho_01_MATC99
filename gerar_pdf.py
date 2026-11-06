@@ -1,10 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Gerador do Relatório Técnico em PDF (Padrão Universitário UFBA - MATC99)
-Produz o arquivo RELATORIO_TECNICO_MATC99.pdf (6 páginas) com fontes TrueType
-nativas do sistema (Arial / Consolas), sem imagens de fórmulas coladas e com
-diagramação limpa de trabalho acadêmico.
+Gerador do Relatório Técnico em PDF — Rigorosamente Formatado no Padrão ABNT
+(NBR 14724, NBR 6027, NBR 6023 e IBGE Normas de Apresentação Tabular).
+
+Implementa:
+1. Capa e Folha de Rosto em páginas separadas com "Salvador - BA / Novembro de 2026"
+   posicionado exatamente no rodapé e nota de natureza do trabalho com recuo de 8 cm.
+2. Sumário automático (NBR 6027) em página própria com líderes pontilhados (...) e
+   numeração exata das páginas calculada em duas passagens (multiBuild).
+3. Margens ABNT (Superior: 3 cm, Esquerda: 3 cm, Inferior: 2 cm, Direita: 2 cm),
+   fonte Arial 12 pt, espaçamento entrelinhas 1,5 (18 pt), texto justificado e
+   recuo de primeira linha de 1,25 cm em todos os parágrafos.
+4. Numeração de páginas no canto superior direito (2 cm da borda superior e direita)
+   apenas a partir da primeira página textual (Introdução), contando as folhas desde a Folha de Rosto.
+5. Tabelas no padrão ABNT/IBGE (sem bordas verticais laterais ou internas; apenas fios
+   horizontais no topo, abaixo do cabeçalho e na base), com título superior e Fonte inferior.
+6. Códigos e Logs formatados como Quadros (Quadro 1 a Quadro 4) com bordas fechadas,
+   título no topo e "Fonte: O autor (2026)." na base.
+7. Equações matemáticas centralizadas com numeração sequencial (1), (2), (3) e (4)
+   alinhada à margem direita.
+8. Referências Bibliográficas conforme NBR 6023 (alinhadas à esquerda, espaçamento
+   simples, títulos em negrito e URL com <...> e "Acesso em: 04 nov. 2026.").
 """
 
 import shutil
@@ -16,24 +33,25 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
 from reportlab.platypus import (
-    HRFlowable,
+    BaseDocTemplate,
+    Frame,
     KeepTogether,
+    NextPageTemplate,
     PageBreak,
+    PageTemplate,
     Paragraph,
     Preformatted,
-    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
 )
+from reportlab.platypus.tableofcontents import TableOfContents
 
-# Remove pasta antiga de imagens de fórmulas caso exista
 DIR_BASE = Path(__file__).resolve().parent
 shutil.rmtree(DIR_BASE / "formulas_img", ignore_errors=True)
 
-# Registro de fontes TrueType com suporte completo a acentuação e símbolos matemáticos Unicode
+# Registro das fontes TrueType (Arial e Consolas)
 FONT_DIR = Path("C:/Windows/Fonts")
 if (FONT_DIR / "arial.ttf").exists():
     pdfmetrics.registerFont(TTFont("Arial", str(FONT_DIR / "arial.ttf")))
@@ -62,315 +80,477 @@ if (FONT_DIR / "consola.ttf").exists():
 else:
     FONT_MONO = "Courier"
 
-
-class CanvasRelatorioAcademico(canvas.Canvas):
-    """Numeração de páginas 'Página X de Y' e cabeçalho discreto a partir da página 2."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._saved_page_states = []
-
-    def showPage(self):
-        self._saved_page_states.append(dict(self.__dict__))
-        self._startPage()
-
-    def save(self):
-        total_paginas = len(self._saved_page_states)
-        print(f"Total real de paginas no PDF: {total_paginas}")
-        for state in self._saved_page_states:
-            self.__dict__.update(state)
-            self._desenhar_cabecalho_rodape(total_paginas)
-            super().showPage()
-        super().save()
-
-    def _desenhar_cabecalho_rodape(self, total_paginas: int):
-        self.saveState()
-        self.setFont(FONT_BODY, 8.5)
-        self.setFillColor(colors.HexColor("#444444"))
-
-        # Cabeçalho e rodapé apenas a partir da página 2 (capa limpa na página 1)
-        if self._pageNumber > 1:
-            self.drawString(
-                2.0 * cm,
-                28.1 * cm,
-                "UFBA — MATC99: Segurança e Auditoria de Sistemas de Informação",
-            )
-            self.drawRightString(
-                19.0 * cm,
-                28.1 * cm,
-                "Trabalho 01 — Criptografia Aplicada",
-            )
-            self.setStrokeColor(colors.HexColor("#CCCCCC"))
-            self.setLineWidth(0.5)
-            self.line(2.0 * cm, 27.9 * cm, 19.0 * cm, 27.9 * cm)
-
-            self.line(2.0 * cm, 1.7 * cm, 19.0 * cm, 1.7 * cm)
-            self.drawString(
-                2.0 * cm,
-                1.25 * cm,
-                "Estudo de Caso: Miguelito Segurança e Tecnologia Ltda.",
-            )
-            self.drawRightString(
-                19.0 * cm,
-                1.25 * cm,
-                f"Página {self._pageNumber} de {total_paginas}",
-            )
-        self.restoreState()
+# Largura útil ABNT: A4 (21,0 cm) - 3,0 cm (esq) - 2,0 cm (dir) = 16,0 cm
+LARGURA_UTIL = 16.0 * cm
 
 
-def caixa_codigo(texto: str, estilo_codigo: ParagraphStyle, largura_cm: float = 17.0) -> Table:
-    """Cria um bloco de código/log com fundo cinza claro e borda discreta."""
-    tabela = Table([[Preformatted(texto.strip(), estilo_codigo)]], colWidths=[largura_cm * cm])
-    tabela.setStyle(
+class AbntDocTemplate(BaseDocTemplate):
+    """
+    Template ABNT (NBR 14724 / NBR 6027):
+    - Captura os títulos (H1 e H2) para alimentar automaticamente o Sumário (TableOfContents)
+      com a numeração de página real (contando a partir da Folha de Rosto, onde a Capa não é contada).
+    """
+
+    def __init__(self, filename, **kw):
+        super().__init__(filename, **kw)
+
+    def afterFlowable(self, flowable):
+        if isinstance(flowable, Paragraph):
+            style_name = flowable.style.name
+            # Pela NBR 14724, a Capa (página física 1) não é contada na numeração de folhas;
+            # a contagem inicia na Folha de Rosto (página física 2 = folha 1), portanto num_abnt = page - 1
+            num_pagina_abnt = max(1, self.page - 1)
+            if style_name == "ABNT_H1":
+                texto_limpo = flowable.getPlainText()
+                self.notify("TOCEntry", (0, texto_limpo, num_pagina_abnt))
+            elif style_name == "ABNT_H2":
+                texto_limpo = flowable.getPlainText()
+                self.notify("TOCEntry", (1, texto_limpo, num_pagina_abnt))
+
+
+def on_page_pre_textual(canvas, doc):
+    """
+    Elementos pré-textuais (Capa, Folha de Rosto e Sumário):
+    - Não exibem número de página (NBR 14724).
+    - Na Capa (pág. física 1) e na Folha de Rosto (pág. física 2), posicionam
+      fixamente "SALVADOR - BA" e "Novembro de 2026" no rodapé da página.
+    """
+    canvas.saveState()
+    if doc.page in (1, 2):
+        canvas.setFont(FONT_BOLD, 12)
+        # Centro horizontal da área útil ABNT: margem esquerda (3 cm) + metade de 16 cm (8 cm) = 11 cm
+        x_centro = 3.0 * cm + (LARGURA_UTIL / 2.0)
+        canvas.drawCentredString(x_centro, 2.7 * cm, "SALVADOR - BA")
+        canvas.setFont(FONT_BODY, 12)
+        canvas.drawCentredString(x_centro, 2.1 * cm, "Novembro de 2026")
+    canvas.restoreState()
+
+
+def on_page_textual(canvas, doc):
+    """
+    Elementos textuais e pós-textuais (a partir da Introdução):
+    - Numeração em algarismos arábicos no canto superior direito, a 2 cm da borda
+      superior e a 2 cm da borda direita (NBR 14724).
+    - Número da folha = doc.page - 1 (pois a Capa não entra na contagem).
+    """
+    canvas.saveState()
+    canvas.setFont(FONT_BODY, 10)
+    num_folha = doc.page - 1
+    canvas.drawRightString(21.0 * cm - 2.0 * cm, 29.7 * cm - 2.0 * cm, str(num_folha))
+    canvas.restoreState()
+
+
+def bloco_equacao_abnt(formula_html: str, numero_eq: str, st_eq: ParagraphStyle, st_num: ParagraphStyle) -> Table:
+    """
+    Cria uma equação destacada padrão ABNT: fórmula centralizada e numeração (1), (2)...
+    alinhada à margem direita.
+    """
+    t = Table(
+        [[Paragraph(formula_html, st_eq), Paragraph(f"({numero_eq})", st_num)]],
+        colWidths=[14.2 * cm, 1.8 * cm],
+    )
+    t.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F7F8FA")),
-                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#D0D5DD")),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("LEFTPADDING", (0, 0), (-1, -1), 7),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ]
         )
     )
-    return tabela
+    return t
+
+
+def criar_quadro_abnt(
+    numero: int,
+    titulo: str,
+    conteudo_codigo: str,
+    st_legenda: ParagraphStyle,
+    st_codigo: ParagraphStyle,
+    st_fonte: ParagraphStyle,
+) -> KeepTogether:
+    """
+    Cria um Quadro / Listing padrão ABNT:
+    - Título na parte superior: "Quadro X – Título"
+    - Quadro com bordas fechadas laterais, superior e inferior
+    - Fonte obrigatória na parte inferior: "Fonte: O autor (2026)."
+    """
+    p_titulo = Paragraph(f"<b>Quadro {numero}</b> – {titulo}", st_legenda)
+    t_quadro = Table([[Preformatted(conteudo_codigo.strip(), st_codigo)]], colWidths=[LARGURA_UTIL])
+    t_quadro.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+                ("BOX", (0, 0), (-1, -1), 0.75, colors.black),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    p_fonte = Paragraph("Fonte: O autor (2026).", st_fonte)
+    return KeepTogether([p_titulo, t_quadro, p_fonte, Spacer(1, 6)])
+
+
+def criar_tabela_abnt(
+    numero: int,
+    titulo: str,
+    dados_linhas: list,
+    larguras_colunas: list,
+    st_legenda: ParagraphStyle,
+    st_fonte: ParagraphStyle,
+    centralizar_ultima: bool = False,
+) -> KeepTogether:
+    """
+    Cria uma Tabela no padrão ABNT / IBGE:
+    - Título na parte superior: "Tabela X – Título"
+    - ABERTA nas laterais (sem bordas verticais externas ou internas)
+    - Fios horizontais apenas no topo da tabela, abaixo do cabeçalho e na base
+    - Fonte obrigatória na parte inferior: "Fonte: O autor (2026)."
+    """
+    p_titulo = Paragraph(f"<b>Tabela {numero}</b> – {titulo}", st_legenda)
+    t = Table(dados_linhas, colWidths=larguras_colunas)
+    comandos_estilo = [
+        ("LINEABOVE", (0, 0), (-1, 0), 1.0, colors.black),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.75, colors.black),
+        ("LINEBELOW", (0, -1), (-1, -1), 1.0, colors.black),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]
+    if centralizar_ultima:
+        comandos_estilo.append(("ALIGN", (-1, 0), (-1, -1), "CENTER"))
+    t.setStyle(TableStyle(comandos_estilo))
+    p_fonte = Paragraph("Fonte: O autor (2026).", st_fonte)
+    return KeepTogether([p_titulo, t, p_fonte, Spacer(1, 6)])
 
 
 def gerar_pdf(caminho_saida: str = "RELATORIO_TECNICO_MATC99.pdf"):
-    doc = SimpleDocTemplate(
+    # Margens ABNT NBR 14724: Esquerda 3 cm, Superior 3 cm, Direita 2 cm, Inferior 2 cm
+    doc = AbntDocTemplate(
         caminho_saida,
         pagesize=A4,
-        leftMargin=2.0 * cm,
+        leftMargin=3.0 * cm,
         rightMargin=2.0 * cm,
-        topMargin=2.1 * cm,
-        bottomMargin=1.9 * cm,
+        topMargin=3.0 * cm,
+        bottomMargin=2.0 * cm,
         title="Trabalho 01 - Criptografia Aplicada (MATC99 - UFBA)",
         author="Wellington Miguel de Jesus Silva",
     )
 
-    styles = getSampleStyleSheet()
-    cor_titulo = colors.HexColor("#111827")
-    cor_subtitulo = colors.HexColor("#1F2937")
-    cor_texto = colors.HexColor("#111111")
+    frame_abnt = Frame(
+        3.0 * cm,
+        2.0 * cm,
+        LARGURA_UTIL,
+        29.7 * cm - 5.0 * cm,  # 24,7 cm de altura útil
+        id="frame_abnt",
+        leftPadding=0,
+        rightPadding=0,
+        topPadding=0,
+        bottomPadding=0,
+    )
 
-    # Estilos da Capa
-    capa_inst = ParagraphStyle(
+    doc.addPageTemplates(
+        [
+            PageTemplate(id="PreTextual", frames=[frame_abnt], onPage=on_page_pre_textual),
+            PageTemplate(id="Textual", frames=[frame_abnt], onPage=on_page_textual),
+        ]
+    )
+
+    styles = getSampleStyleSheet()
+
+    # ==========================================================================
+    # ESTILOS TIPOGRAFIA GERAL ABNT (Fonte 12 pt, Entrelinhas 1,5 = 18 pt, Recuo 1,25 cm)
+    # ==========================================================================
+    st_capa_inst = ParagraphStyle(
         "CapaInst",
         parent=styles["Normal"],
         fontName=FONT_BOLD,
         fontSize=12,
-        leading=17,
+        leading=18,
         alignment=TA_CENTER,
-        textColor=cor_titulo,
     )
-    capa_disc = ParagraphStyle(
-        "CapaDisc",
+    st_capa_autor = ParagraphStyle(
+        "CapaAutor",
         parent=styles["Normal"],
-        fontName=FONT_BODY,
-        fontSize=11,
-        leading=15,
+        fontName=FONT_BOLD,
+        fontSize=12,
+        leading=18,
         alignment=TA_CENTER,
-        textColor=cor_subtitulo,
     )
-    capa_titulo = ParagraphStyle(
+    st_capa_titulo = ParagraphStyle(
         "CapaTitulo",
         parent=styles["Normal"],
         fontName=FONT_BOLD,
-        fontSize=16,
-        leading=22,
+        fontSize=14,
+        leading=21,
         alignment=TA_CENTER,
-        textColor=cor_titulo,
-        spaceAfter=10,
+        spaceAfter=8,
     )
-    capa_sub = ParagraphStyle(
-        "CapaSub",
+    st_capa_subtitulo = ParagraphStyle(
+        "CapaSubtitulo",
+        parent=styles["Normal"],
+        fontName=FONT_BODY,
+        fontSize=12,
+        leading=18,
+        alignment=TA_CENTER,
+    )
+    # Nota de natureza na Folha de Rosto: recuo de 8 cm da margem esquerda, espaçamento simples (NBR 14724)
+    st_natureza = ParagraphStyle(
+        "NaturezaTrabalho",
+        parent=styles["Normal"],
+        fontName=FONT_BODY,
+        fontSize=10,
+        leading=13,
+        alignment=TA_JUSTIFY,
+        leftIndent=8.0 * cm,
+    )
+    st_titulo_central = ParagraphStyle(
+        "TituloCentralPreTextual",
+        parent=styles["Normal"],
+        fontName=FONT_BOLD,
+        fontSize=12,
+        leading=18,
+        alignment=TA_CENTER,
+        spaceAfter=18,
+    )
+
+    # Títulos de Seção Primária e Secundária (NBR 6024)
+    st_h1 = ParagraphStyle(
+        "ABNT_H1",
+        parent=styles["Normal"],
+        fontName=FONT_BOLD,
+        fontSize=12,
+        leading=18,
+        alignment=TA_LEFT,
+        spaceBefore=18,
+        spaceAfter=10,
+        keepWithNext=True,
+    )
+    st_h2 = ParagraphStyle(
+        "ABNT_H2",
+        parent=styles["Normal"],
+        fontName=FONT_BOLD,
+        fontSize=12,
+        leading=18,
+        alignment=TA_LEFT,
+        spaceBefore=14,
+        spaceAfter=8,
+        keepWithNext=True,
+    )
+
+    # Corpo do texto: Fonte 12, espaçamento 1,5 (18 pt), justificado, recuo de 1,25 cm na 1ª linha
+    st_corpo = ParagraphStyle(
+        "ABNT_Corpo",
+        parent=styles["Normal"],
+        fontName=FONT_BODY,
+        fontSize=12,
+        leading=18,
+        alignment=TA_JUSTIFY,
+        firstLineIndent=1.25 * cm,
+        spaceAfter=6,
+    )
+
+    # Alíneas / Listas com recuo padronizado
+    st_alinea = ParagraphStyle(
+        "ABNT_Alinea",
+        parent=styles["Normal"],
+        fontName=FONT_BODY,
+        fontSize=12,
+        leading=18,
+        alignment=TA_JUSTIFY,
+        leftIndent=1.25 * cm,
+        firstLineIndent=0,
+        spaceAfter=6,
+    )
+
+    # Equações centralizadas e numeração à direita
+    st_eq = ParagraphStyle(
+        "ABNT_Equacao",
         parent=styles["Normal"],
         fontName=FONT_ITALIC,
         fontSize=11.5,
         leading=16,
         alignment=TA_CENTER,
-        textColor=cor_subtitulo,
     )
-    capa_meta = ParagraphStyle(
-        "CapaMeta",
+    st_eq_num = ParagraphStyle(
+        "ABNT_EquacaoNum",
         parent=styles["Normal"],
         fontName=FONT_BODY,
-        fontSize=10.5,
+        fontSize=11.5,
         leading=16,
-        alignment=TA_LEFT,
-        textColor=cor_texto,
+        alignment=TA_RIGHT,
     )
 
-    # Estilos do Documento
-    h1_style = ParagraphStyle(
-        "H1",
+    # Legendas (Topo) e Fontes (Base) de Tabelas e Quadros (tamanho 10, espaçamento simples - NBR 14724)
+    st_legenda = ParagraphStyle(
+        "ABNT_Legenda",
         parent=styles["Normal"],
-        fontName=FONT_BOLD,
-        fontSize=11.5,
-        leading=15,
-        textColor=cor_titulo,
-        spaceBefore=9.5,
+        fontName=FONT_BODY,
+        fontSize=10,
+        leading=13,
+        alignment=TA_LEFT,
+        spaceBefore=10,
         spaceAfter=4,
         keepWithNext=True,
     )
-    h2_style = ParagraphStyle(
-        "H2",
-        parent=styles["Normal"],
-        fontName=FONT_BOLD,
-        fontSize=10,
-        leading=13.5,
-        textColor=cor_subtitulo,
-        spaceBefore=7,
-        spaceAfter=3,
-        keepWithNext=True,
-    )
-    body_style = ParagraphStyle(
-        "Corpo",
+    st_fonte = ParagraphStyle(
+        "ABNT_Fonte",
         parent=styles["Normal"],
         fontName=FONT_BODY,
-        fontSize=9.1,
-        leading=12.6,
-        alignment=TA_JUSTIFY,
-        textColor=cor_texto,
-        spaceAfter=4.0,
-    )
-    bullet_style = ParagraphStyle(
-        "ItemLista",
-        parent=body_style,
-        leftIndent=14,
-        firstLineIndent=-9,
-        spaceAfter=3.0,
-    )
-    eq_style = ParagraphStyle(
-        "Equacao",
-        parent=styles["Normal"],
-        fontName=FONT_ITALIC,
         fontSize=10,
-        leading=14,
-        alignment=TA_CENTER,
-        textColor=cor_titulo,
-        spaceBefore=4,
-        spaceAfter=6,
+        leading=13,
+        alignment=TA_LEFT,
+        spaceBefore=3,
+        spaceAfter=8,
     )
-    code_style = ParagraphStyle(
-        "Codigo",
-        parent=styles["Normal"],
-        fontName=FONT_MONO,
-        fontSize=7.4,
-        leading=10.0,
-        textColor=colors.HexColor("#111827"),
-    )
-    tab_header = ParagraphStyle(
-        "TabHeader",
+
+    # Células de Tabela e Código de Quadros (tamanho menor conforme NBR 14724 Seção 5.1)
+    st_tab_cab = ParagraphStyle(
+        "ABNT_TabCab",
         parent=styles["Normal"],
         fontName=FONT_BOLD,
-        fontSize=8.8,
-        leading=11.5,
-        textColor=cor_titulo,
+        fontSize=9.5,
+        leading=12,
+        alignment=TA_LEFT,
     )
-    tab_cell = ParagraphStyle(
-        "TabCell",
-        parent=styles["Normal"],
-        fontName=FONT_BODY,
-        fontSize=8.5,
-        leading=11.5,
-        textColor=cor_texto,
-    )
-    tab_cell_center = ParagraphStyle(
-        "TabCellCenter",
-        parent=tab_cell,
-        alignment=TA_CENTER,
-    )
-    sumario_item = ParagraphStyle(
-        "SumarioItem",
+    st_tab_cel = ParagraphStyle(
+        "ABNT_TabCel",
         parent=styles["Normal"],
         fontName=FONT_BODY,
         fontSize=9.2,
-        leading=13.0,
-        textColor=cor_texto,
+        leading=12,
+        alignment=TA_LEFT,
+    )
+    st_tab_cel_centro = ParagraphStyle(
+        "ABNT_TabCelCentro",
+        parent=st_tab_cel,
+        alignment=TA_CENTER,
+    )
+    st_codigo = ParagraphStyle(
+        "ABNT_Codigo",
+        parent=styles["Normal"],
+        fontName=FONT_MONO,
+        fontSize=7.4,
+        leading=10.2,
+        textColor=colors.black,
+    )
+
+    # Referências Bibliográficas (NBR 6023: alinhadas à esquerda, espaçamento simples, separadas por 1 espaço simples)
+    st_ref = ParagraphStyle(
+        "ABNT_Referencia",
+        parent=styles["Normal"],
+        fontName=FONT_BODY,
+        fontSize=12,
+        leading=14.4,
+        alignment=TA_LEFT,
+        firstLineIndent=0,
+        spaceAfter=12,
+    )
+
+    # Estilos do Sumário (NBR 6027) com preenchimento pontilhado automático
+    st_toc_l0 = ParagraphStyle(
+        "TOC_Level0",
+        parent=styles["Normal"],
+        fontName=FONT_BOLD,
+        fontSize=12,
+        leading=20,
+        leftIndent=0,
+        spaceAfter=2,
+    )
+    st_toc_l1 = ParagraphStyle(
+        "TOC_Level1",
+        parent=styles["Normal"],
+        fontName=FONT_BODY,
+        fontSize=12,
+        leading=18,
+        leftIndent=0.8 * cm,
+        spaceAfter=2,
     )
 
     story = []
 
     # ==========================================================================
-    # PÁGINA 1: CAPA ACADÊMICA E SUMÁRIO
+    # PÁGINA 1: CAPA (NBR 14724)
     # ==========================================================================
-    story.append(Spacer(1, 0.2 * cm))
-    story.append(Paragraph("UNIVERSIDADE FEDERAL DA BAHIA", capa_inst))
-    story.append(Paragraph("INSTITUTO DE COMPUTAÇÃO", capa_inst))
-    story.append(Paragraph("DEPARTAMENTO DE CIÊNCIA DA COMPUTAÇÃO", capa_disc))
-    story.append(Spacer(1, 0.7 * cm))
-
     story.append(
         Paragraph(
-            "TRABALHO 01 — CRIPTOGRAFIA APLICADA:<br/>PROTEÇÃO, ASSINATURAS DIGITAIS E CERTIFICADOS",
-            capa_titulo,
+            "UNIVERSIDADE FEDERAL DA BAHIA<br/>"
+            "INSTITUTO DE COMPUTAÇÃO<br/>"
+            "DEPARTAMENTO DE CIÊNCIA DA COMPUTAÇÃO",
+            st_capa_inst,
+        )
+    )
+    story.append(Spacer(1, 3.2 * cm))
+    story.append(Paragraph("WELLINGTON MIGUEL DE JESUS SILVA", st_capa_autor))
+    story.append(Spacer(1, 4.5 * cm))
+    story.append(
+        Paragraph(
+            "TRABALHO 01 – CRIPTOGRAFIA APLICADA:<br/>"
+            "PROTEÇÃO, ASSINATURAS DIGITAIS E CERTIFICADOS",
+            st_capa_titulo,
         )
     )
     story.append(
         Paragraph(
             "Estudo de Caso: Auditoria de Contratos Digitais na Miguelito Segurança e Tecnologia Ltda.",
-            capa_sub,
+            st_capa_subtitulo,
         )
     )
-    story.append(Spacer(1, 0.7 * cm))
+    # O local e data ("SALVADOR - BA / Novembro de 2026") são desenhados no rodapé por on_page_pre_textual
+    story.append(PageBreak())
 
-    # Bloco de metadados alinhado à direita (padrão universitário brasileiro)
-    bloco_meta = Table(
-        [
-            [
-                "",
-                Paragraph(
-                    "Relatório Técnico apresentado à disciplina <b>MATC99 — Segurança e Auditoria "
-                    "de Sistemas de Informação</b> do Instituto de Computação da Universidade Federal "
-                    "da Bahia (UFBA), como requisito parcial de avaliação prática.<br/><br/>"
-                    "<b>Aluno:</b> Wellington Miguel de Jesus Silva<br/>"
-                    "<b>Empresa Auditada (Cenário):</b> Miguelito Segurança e Tecnologia Ltda.",
-                    capa_meta,
-                ),
-            ]
-        ],
-        colWidths=[5.5 * cm, 11.5 * cm],
-    )
-    bloco_meta.setStyle(
-        TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (1, 0), (1, 0), 10),
-                ("LINEBEFORE", (1, 0), (1, 0), 1.0, colors.HexColor("#9CA3AF")),
-            ]
+    # ==========================================================================
+    # PÁGINA 2: FOLHA DE ROSTO (NBR 14724)
+    # ==========================================================================
+    story.append(Paragraph("WELLINGTON MIGUEL DE JESUS SILVA", st_capa_autor))
+    story.append(Spacer(1, 5.0 * cm))
+    story.append(
+        Paragraph(
+            "TRABALHO 01 – CRIPTOGRAFIA APLICADA:<br/>"
+            "PROTEÇÃO, ASSINATURAS DIGITAIS E CERTIFICADOS",
+            st_capa_titulo,
         )
     )
-    story.append(bloco_meta)
-    story.append(Spacer(1, 0.6 * cm))
+    story.append(
+        Paragraph(
+            "Estudo de Caso: Auditoria de Contratos Digitais na Miguelito Segurança e Tecnologia Ltda.",
+            st_capa_subtitulo,
+        )
+    )
+    story.append(Spacer(1, 3.5 * cm))
+    story.append(
+        Paragraph(
+            "Relatório Técnico apresentado à disciplina MATC99 – Segurança e Auditoria "
+            "de Sistemas de Informação, do Instituto de Computação da Universidade Federal "
+            "da Bahia (UFBA), como requisito parcial para avaliação prática.<br/><br/>"
+            "Cenário Auditado: Miguelito Segurança e Tecnologia Ltda.",
+            st_natureza,
+        )
+    )
+    # O local e data ("SALVADOR - BA / Novembro de 2026") são desenhados no rodapé por on_page_pre_textual
+    story.append(PageBreak())
 
-    # Sumário Executivo na metade inferior da página 1
-    story.append(HRFlowable(width="100%", thickness=0.7, color=colors.HexColor("#D1D5DB"), spaceAfter=4))
-    story.append(Paragraph("SUMÁRIO", h1_style))
-    itens_sumario = [
-        "<b>1. Introdução e Contextualização do Problema</b>",
-        "<b>2. Fundamentação Teórica</b>",
-        "&nbsp;&nbsp;&nbsp;&nbsp;2.1. Criptografia Simétrica vs. Criptografia Assimétrica",
-        "&nbsp;&nbsp;&nbsp;&nbsp;2.2. Funcionamento do Modo AES-GCM e Integridade Autenticada (AEAD)",
-        "&nbsp;&nbsp;&nbsp;&nbsp;2.3. Infraestrutura de Chaves Públicas (PKI), Certificados X.509 e Assinaturas RSA",
-        "<b>3. Metodologia e Ambiente Experimental</b>",
-        "<b>4. Experimentos da Parte I: Proteção e Integridade com AES-256-GCM</b>",
-        "<b>5. Experimentos da Parte II: Assinaturas Digitais e Cadeia de Certificação</b>",
-        "<b>6. Matriz de Decisão e Recomendações de Governança</b>",
-        "<b>7. Conclusão</b>",
-        "<b>8. Referências Bibliográficas</b>",
-    ]
-    for item in itens_sumario:
-        story.append(Paragraph(item, sumario_item))
-
-    story.append(Spacer(1, 0.6 * cm))
-    story.append(Paragraph("Salvador — BA | Novembro de 2026", capa_disc))
+    # ==========================================================================
+    # PÁGINA 3: SUMÁRIO (NBR 6027 - COM PONTILHADOS E PÁGINAS AUTOMÁTICAS)
+    # ==========================================================================
+    story.append(Paragraph("SUMÁRIO", st_titulo_central))
+    toc = TableOfContents()
+    toc.levelStyles = [st_toc_l0, st_toc_l1]
+    toc.dotsMinLevel = 0
+    story.append(toc)
+    story.append(NextPageTemplate("Textual"))
     story.append(PageBreak())
 
     # ==========================================================================
     # SEÇÃO 1: INTRODUÇÃO E CONTEXTUALIZAÇÃO DO PROBLEMA
     # ==========================================================================
-    story.append(Paragraph("1. Introdução e Contextualização do Problema", h1_style))
+    story.append(Paragraph("1 INTRODUÇÃO E CONTEXTUALIZAÇÃO DO PROBLEMA", st_h1))
     story.append(
         Paragraph(
             "A digitalização de processos de contratação entre empresas (B2B) substituiu o papel físico "
@@ -378,13 +558,13 @@ def gerar_pdf(caminho_saida: str = "RELATORIO_TECNICO_MATC99.pdf"):
             "transição reduza custos operacionais e acelere o fechamento de negócios, ela transfere toda a "
             "responsabilidade jurídica e financeira da transação para os controles criptográficos adotados "
             "pelas partes. Quando esses controles são mal projetados ou validados apenas de forma parcial, "
-            "a organização fica exposta a fraudes financeiras e à perda de validade jurídica dos seus contratos.",
-            body_style,
+            "a organização fica exposta a fraudes financeiras e à perda de validade jurídica dos seus instrumentos contratuais.",
+            st_corpo,
         )
     )
     story.append(
         Paragraph(
-            "Neste trabalho, analisamos o cenário da empresa fictícia <b>Miguelito Segurança e Tecnologia Ltda.</b> "
+            "Neste trabalho, analisa-se o cenário da empresa fictícia <b>Miguelito Segurança e Tecnologia Ltda.</b> "
             "(CNPJ 14.382.910/0001-55), sediada em Salvador/BA, que atua na operação de sistemas críticos e contrata "
             "serviços de nuvem híbrida, links redundantes MPLS/IPSec e custódia de módulos HSM junto a fornecedores "
             "externos. Durante uma revisão de auditoria sobre a tramitação do <b>Contrato Comercial nº 2026/00849-MST</b>, "
@@ -394,282 +574,336 @@ def gerar_pdf(caminho_saida: str = "RELATORIO_TECNICO_MATC99.pdf"):
             "de troca e validação dos arquivos digitais: a suspeita de manipulação de cláusulas financeiras durante o "
             "trânsito do documento e o recebimento de contratos assinados com certificados digitais não reconhecidos "
             "pela governança interna.",
-            body_style,
+            st_corpo,
         )
     )
     story.append(
         Paragraph(
             "Do ponto de vista de segurança da informação e perícia forense, o incidente enfrentado pela Miguelito "
             "Segurança e Tecnologia envolve três riscos práticos distintos que precisam ser isolados e tratados:",
-            body_style,
+            st_corpo,
         )
     )
     story.append(
         Paragraph(
-            "• <b>1. Interceptação e Modificação em Trânsito (<i>Man-in-the-Middle / Bit-Flipping</i>):</b> Contratos "
+            "a) <b>interceptação e modificação em trânsito (<i>Man-in-the-Middle / Bit-Flipping</i>):</b> contratos "
             "comerciais contêm dados bancários, valores de SLA, multas contratuais e especificações técnicas que não "
             "podem vazar para terceiros em trânsito (quebra de confidencialidade). Além disso, caso a empresa utilize "
             "um algoritmo de cifragem tradicional sem autenticação integrada, um atacante posicionado na rede pode "
-            "alterar bytes específicos do texto cifrado para modificar valores no texto decifrado sem precisar conhecer a chave secreta.",
-            bullet_style,
+            "alterar bytes específicos do texto cifrado para modificar valores no texto decifrado sem precisar conhecer a chave secreta;",
+            st_alinea,
         )
     )
     story.append(
         Paragraph(
-            "• <b>2. Adulteração Documental Pós-Assinatura:</b> Mesmo quando um contrato é assinado por um representante "
+            "b) <b>adulteração documental pós-assinatura:</b> mesmo quando um contrato é assinado por um representante "
             "legítimo, existe o risco de o arquivo sofrer modificações posteriores — seja por ação maliciosa interna, "
             "seja por interceptação — alterando, por exemplo, o valor da parcela mensal de R$ 120.833,33 para "
             "R$ 920.833,33. O mecanismo de auditoria precisa detectar alterações mínimas de um único caractere e "
-            "rejeitar o documento imediatamente.",
-            bullet_style,
+            "rejeitar o documento imediatamente;",
+            st_alinea,
         )
     )
     story.append(
         Paragraph(
-            "• <b>3. Falsificação de Identidade Criptográfica (<i>Key Spoofing via Rogue CA</i>):</b> Um invasor externo "
+            "c) <b>falsificação de identidade criptográfica (<i>Key Spoofing via Rogue CA</i>):</b> um invasor externo "
             "pode gerar seu próprio par de chaves assimétricas, configurar uma Autoridade Certificadora própria "
             "(<i>Rogue CA</i>) e emitir um certificado digital preenchido com os mesmos dados cadastrais do fornecedor "
             "verdadeiro (<code>CN = parceiro.miguelito.com.br</code>). Se o setor responsável pela conferência verificar "
             "apenas se a assinatura digital é matematicamente válida contra a chave pública anexada ao processo — "
             "esquecendo de verificar quem emitiu aquele certificado —, o contrato fraudulento será aceito como autêntico.",
-            bullet_style,
+            st_alinea,
         )
     )
     story.append(
         Paragraph(
             "Para responder a esse cenário, este trabalho implementa e documenta uma bancada experimental dividida em "
-            "duas frentes complementares: na <b>Parte I</b>, utilizamos a biblioteca <code>cryptography</code> do Python "
-            "para proteger o contrato com a cifra simétrica autenticada <b>AES-256-GCM</b>; na <b>Parte II</b>, utilizamos "
-            "o <b>OpenSSL</b> em ambiente Linux para construir uma Infraestrutura de Chaves Públicas (PKI) completa, "
-            "confrontando a Autoridade Certificadora interna da empresa (<code>Miguelito Root CA</code>) com uma "
-            "autoridade atacante (<code>Rogue CA</code>) ao longo de três cenários de auditoria (Cenários A, B e C).",
-            body_style,
+            "duas frentes complementares. Na <b>Parte I</b>, utiliza-se a biblioteca <code>cryptography</code> do Python "
+            "para proteger o contrato com a cifra simétrica autenticada <b>AES-256-GCM</b>, testando a recuperação íntegra "
+            "do arquivo e o comportamento do algoritmo frente à adulteração de bytes no criptograma e ao uso de chaves "
+            "incorretas. Na <b>Parte II</b>, utiliza-se o <b>OpenSSL</b> em ambiente Linux para construir uma Infraestrutura "
+            "de Chaves Públicas (PKI) completa, confrontando a Autoridade Certificadora interna da empresa "
+            "(<code>Miguelito Root CA</code>) com uma autoridade atacante (<code>Rogue CA</code>) ao longo de três "
+            "cenários de auditoria (Cenários A, B e C).",
+            st_corpo,
         )
     )
 
     # ==========================================================================
     # SEÇÃO 2: FUNDAMENTAÇÃO TEÓRICA
     # ==========================================================================
-    story.append(Paragraph("2. Fundamentação Teórica", h1_style))
+    story.append(Paragraph("2 FUNDAMENTAÇÃO TEÓRICA", st_h1))
 
-    story.append(Paragraph("2.1. Criptografia Simétrica vs. Criptografia Assimétrica", h2_style))
+    story.append(Paragraph("2.1 Criptografia Simétrica vs. Criptografia Assimétrica", st_h2))
     story.append(
         Paragraph(
             "A escolha entre algoritmos simétricos e assimétricos em uma arquitetura corporativa decorre diretamente "
             "das diferenças de desempenho, gestão de chaves e propriedades jurídicas de cada modelo. Na <b>criptografia "
-            "simétrica</b>, o emissor e o destinatário compartilham exatamente a mesma chave secreta <i>K</i>, usada "
-            "tanto para cifrar quanto para decifrar os dados. Algoritmos simétricos modernos, como o AES "
-            "(<i>Advanced Encryption Standard</i>), operam sobre blocos de bits por meio de rodadas sucessivas de "
-            "substituição, permutação e combinação linear com subchaves derivadas. Por serem operações leves e contarem "
-            "com instruções dedicadas diretamente no hardware dos processadores atuais (<i>AES-NI</i>), as cifras "
-            "simétricas atingem altíssimo desempenho, sendo a escolha ideal para cifrar arquivos extensos e tráfego de rede.",
-            body_style,
+            "simétrica</b>, o emissor e o destinatário compartilham exatamente a mesma chave secreta <i>K</i>, que é usada "
+            "tanto na operação de cifragem quanto na decifragem (STALLINGS, 2023). Algoritmos simétricos modernos, como o "
+            "AES (<i>Advanced Encryption Standard</i>), operam sobre blocos de bits por meio de rodadas sucessivas de "
+            "substituição, permutação e combinação linear com chaves derivadas. Por serem operações leves e contarem com "
+            "instruções dedicadas diretamente nos processadores atuais (<i>AES-NI</i>), as cifras simétricas atingem taxas "
+            "de transferência de múltiplos gigabytes por segundo, sendo a única opção viável na prática para cifrar "
+            "arquivos extensos, bancos de dados e tráfego de rede em tempo real.",
+            st_corpo,
         )
     )
     story.append(
         Paragraph(
-            "Por outro lado, a criptografia simétrica possui duas limitações estruturais para ambientes de negócios abertos: "
-            "(i) o <b>problema da distribuição de chaves</b>, pois exige um canal seguro prévio para combinar a chave <i>K</i> "
-            "entre cada par de empresas (em uma rede com <i>n</i> participantes, seriam necessárias <i>n(n-1)/2</i> chaves "
-            "distintas); e (ii) a <b>ausência de não-repúdio (irretratabilidade)</b>. Como tanto a contratante quanto a "
-            "contratada possuem a mesma chave secreta <i>K</i>, ambas têm capacidade técnica idêntica para gerar um arquivo "
-            "cifrado e sua tag de verificação. Em uma disputa judicial, a Miguelito não conseguiria provar a um perito externo "
-            "que determinado arquivo veio exclusivamente do fornecedor, pois a própria Miguelito poderia tê-lo produzido.",
-            body_style,
+            "Por outro lado, a criptografia simétrica possui duas limitações importantes para ambientes corporativos "
+            "abertos: o <b>problema da distribuição e escalabilidade de chaves</b>, visto que em uma rede com <i>n</i> "
+            "empresas parceiras seriam necessárias <i>n(n-1)/2</i> chaves secretas distintas trocadas por um canal seguro "
+            "prévio; e a <b>ausência de não-repúdio (irretratabilidade)</b>. Como tanto a contratante quanto a contratada "
+            "possuem a mesma chave <i>K</i>, ambas têm capacidade técnica idêntica para gerar um arquivo cifrado e sua "
+            "respectiva tag de verificação. Em uma disputa judicial, a Miguelito Segurança e Tecnologia não conseguiria "
+            "provar a um juiz ou perito externo que determinado arquivo veio exclusivamente do fornecedor, pois a própria "
+            "contratante poderia tê-lo gerado usando a chave compartilhada.",
+            st_corpo,
         )
     )
     story.append(
         Paragraph(
-            "A <b>criptografia assimétrica (ou de chave pública)</b> resolve esses dois limites ao substituir a chave "
-            "compartilhada por um par de chaves matematicamente vinculadas: uma <b>chave privada</b> (mantida sob custódia "
-            "exclusiva do titular) e uma <b>chave pública</b> (divulgada abertamente). Sua segurança baseia-se em problemas "
-            "matemáticos difíceis de inverter sem o segredo privado, como a fatoração do produto de dois números primos "
-            "grandes no algoritmo RSA. Embora seja computacionalmente mais pesada que a simétrica, a criptografia de chave "
-            "pública viabiliza as <b>assinaturas digitais</b>: o titular assina o resumo do documento com sua chave privada "
-            "e qualquer auditor verifica a assinatura com a chave pública. Como apenas o titular possui a chave privada, "
-            "ele não pode negar a autoria posteriormente, garantindo o não-repúdio jurídico.",
-            body_style,
+            "A <b>criptografia assimétrica (ou de chave pública)</b> contorna esses dois limites ao substituir a chave "
+            "compartilhada por um par de chaves matematicamente vinculadas: uma <b>chave privada</b> (mantida em sigilo "
+            "absoluto pelo seu titular) e uma <b>chave pública</b> (que pode ser divulgada abertamente a qualquer parceiro). "
+            "A segurança desse modelo baseia-se em funções de caminho único com alçapão (<i>trapdoor one-way functions</i>), "
+            "nas quais é fácil calcular a função em um sentido usando a chave pública, mas computacionalmente inviável "
+            "inverter o cálculo sem conhecer a informação secreta contida na chave privada — como ocorre no problema da "
+            "fatoração do produto de dois primos grandes no algoritmo RSA (MORIARTY et al., 2016). Quando o titular usa "
+            "sua chave privada exclusiva para assinar o resumo criptográfico de um documento, qualquer auditor pode usar "
+            "a chave pública correspondente para conferir a assinatura. Como apenas o titular detém a chave privada, ele "
+            "não pode negar posteriormente a autoria da assinatura, garantindo o não-repúdio jurídico.",
+            st_corpo,
         )
     )
 
-    story.append(Paragraph("2.2. Funcionamento do Modo AES-GCM e Integridade Autenticada (AEAD)", h2_style))
+    story.append(Paragraph("2.2 Funcionamento do Modo AES-GCM e Integridade Autenticada (AEAD)", st_h2))
     story.append(
         Paragraph(
-            "Durante muitos anos, sistemas corporativos utilizaram cifras de bloco em modos de operação voltados apenas "
-            "para confidencialidade, como o CBC (<i>Cipher Block Chaining</i>) ou o CTR (<i>Counter Mode</i>). Embora esses "
-            "modos escondam o conteúdo contra observadores passivos, eles não protegem a integridade contra atacantes ativos. "
-            "No modo Contador (CTR) puro, por exemplo, o algoritmo recebe um valor único de 96 bits (12 bytes) chamado "
-            "<b>Nonce</b> (IV), concatena um contador sequencial de 32 bits (bloco inicial <i>J<sub>0</sub></i>) e cifra esse "
-            "contador com a chave <i>K</i> para gerar um fluxo pseudoaleatório (<i>keystream</i>), que é combinado via operação "
-            "lógica <b>XOR</b> com cada bloco de texto em claro <i>P<sub>i</sub></i> para gerar o bloco cifrado <i>C<sub>i</sub></i>.",
-            body_style,
+            "Durante muitos anos, sistemas corporativos utilizaram cifras de bloco em modos de operação voltados "
+            "exclusivamente para confidencialidade, como o CBC (<i>Cipher Block Chaining</i>) ou o CTR (<i>Counter Mode</i>). "
+            "Embora esses modos escondam o conteúdo do texto em claro contra um observador passivo, eles não oferecem "
+            "proteção nativa contra um atacante ativo que modifique o texto cifrado em trânsito. No modo Contador (CTR) "
+            "puro, o algoritmo recebe um valor público inicial único de 96 bits (12 bytes) chamado <b>Nonce</b> (IV), "
+            "concatena a ele um contador sequencial de 32 bits (formando o bloco inicial <i>J<sub>0</sub></i>) e cifra "
+            "esse contador com a chave secreta <i>K</i>. O fluxo pseudoaleatório resultante (<i>keystream</i>) é combinado "
+            "com cada bloco do texto em claro <i>P<sub>i</sub></i> através da operação lógica XOR (⊕) para produzir o "
+            "bloco cifrado <i>C<sub>i</sub></i>, conforme expresso na Equação (1):",
+            st_corpo,
+        )
+    )
+    story.append(
+        bloco_equacao_abnt(
+            "C<sub>i</sub> = P<sub>i</sub> ⊕ E<sub>K</sub>(inc<sub>32</sub><sup>i</sup>(J<sub>0</sub>)), &nbsp;&nbsp; i = 1, 2, ..., n",
+            "1",
+            st_eq,
+            st_eq_num,
         )
     )
     story.append(
         Paragraph(
-            "O risco de usar o modo CTR sozinho está na sua <b>maleabilidade linear</b>: como decifrar consiste apenas em "
-            "aplicar novamente o XOR entre o texto cifrado e o mesmo <i>keystream</i>, se um invasor interceptar o arquivo "
-            "e inverter 1 bit em uma posição conhecida do bloco cifrado <i>C<sub>i</sub></i>, a decifragem ocorrerá sem erro "
-            "algum e inverterá exatamente o mesmo bit no texto recuperado <i>P<sub>i</sub></i> (ataque de <i>bit-flipping</i>). "
-            "Para resolver isso de forma nativa, o padrão <b>NIST SP 800-38D</b> especificou o <b>AES-GCM</b> "
+            "O perigo de usar o modo CTR isoladamente reside na sua <b>maleabilidade linear</b>: como a decifragem "
+            "consiste apenas em aplicar novamente a operação XOR entre o bloco cifrado recebido e o mesmo <i>keystream</i>, "
+            "se um invasor interceptar o arquivo no caminho e inverter 1 bit em uma posição conhecida do bloco cifrado "
+            "<i>C<sub>i</sub></i>, o processo de decifragem não apresentará nenhum erro e inverterá exatamente o mesmo bit "
+            "no texto em claro recuperado <i>P<sub>i</sub></i>. Em um contrato comercial padronizado onde a posição das "
+            "cláusulas é previsível, isso permitiria alterar dígitos de valores monetários às cegas (ataque de <i>bit-flipping</i>).",
+            st_corpo,
+        )
+    )
+    story.append(
+        Paragraph(
+            "Para eliminar essa vulnerabilidade, a norma <b>NIST SP 800-38D</b> (DWORKIN, 2007) definiu o <b>AES-GCM</b> "
             "(<i>Galois/Counter Mode</i>), um esquema <b>AEAD</b> (<i>Authenticated Encryption with Associated Data</i>) "
-            "que acopla o modo contador à função de autenticação algébrica <b>GHASH</b>:",
-            body_style,
+            "que une o modo contador ao mecanismo algébrico de autenticação <b>GHASH</b>. Antes de processar os dados, "
+            "o algoritmo passa um bloco nulo de 128 bits pela cifra AES com a chave <i>K</i>, derivando a subchave secreta "
+            "de autenticação <i>H = E<sub>K</sub>(0<sup>128</sup>)</i>. Em seguida, os blocos de 128 bits dos Dados "
+            "Associados não cifrados (AAD) e os blocos já cifrados (<i>C<sub>1</sub>, ..., C<sub>n</sub></i>), seguidos "
+            "de um bloco final com os tamanhos em bits de AAD e do texto cifrado, são tratados como coeficientes de um "
+            "polinômio avaliado em <i>H</i> dentro do corpo finito de Galois GF(2<sup>128</sup>) módulo o polinômio "
+            "irredutível <i>P(x) = x<sup>128</sup> + x<sup>7</sup> + x<sup>2</sup> + x + 1</i>. O resultado de 128 bits "
+            "do GHASH recebe um XOR final com a cifragem do contador inicial <i>E<sub>K</sub>(J<sub>0</sub>)</i>, gerando "
+            "a <b>Authentication Tag (T)</b> de 16 bytes (128 bits), descrita na Equação (2):",
+            st_corpo,
+        )
+    )
+    story.append(
+        bloco_equacao_abnt(
+            "T = GHASH<sub>H</sub>(AAD, Ciphertext) ⊕ E<sub>K</sub>(J<sub>0</sub>)",
+            "2",
+            st_eq,
+            st_eq_num,
         )
     )
     story.append(
         Paragraph(
-            "• <b>1. Subchave de Autenticação e Dados Associados (AAD):</b> Cifra-se um bloco nulo de 128 bits com a chave "
-            "<i>K</i> para derivar a subchave interna <i>H = E<sub>K</sub>(0<sup>128</sup>)</i>. Além do texto cifrado, o GCM "
-            "permite autenticar metadados em texto claro (como identificação do contrato), chamados de AAD.",
-            bullet_style,
+            "O diferencial de segurança do AES-GCM ocorre na decifragem, que segue estritamente a regra "
+            "<b>Encrypt-then-MAC</b>: antes de liberar qualquer byte decifrado para a aplicação, a rotina recalcula a tag "
+            "local <i>T'</i> sobre os blocos recebidos e a compara em tempo constante com a tag <i>T</i> anexada ao arquivo. "
+            "Se um atacante alterar qualquer bloco cifrado <i>C<sub>i</sub></i> por uma máscara de erro não nula Δ "
+            "(ou seja, <i>C'<sub>i</sub> = C<sub>i</sub> ⊕ Δ</i>), a diferença algébrica entre a tag recalculada e a "
+            "original em GF(2<sup>128</sup>) é dada pela Equação (3):",
+            st_corpo,
+        )
+    )
+    story.append(
+        bloco_equacao_abnt(
+            "ΔT = T' ⊕ T = Δ · H<sup>n - i + 2</sup> &nbsp; (mod P(x))",
+            "3",
+            st_eq,
+            st_eq_num,
         )
     )
     story.append(
         Paragraph(
-            "• <b>2. Polinômio GHASH em GF(2<sup>128</sup>) e Authentication Tag:</b> Os blocos de 128 bits do AAD e os blocos "
-            "já cifrados (<i>C<sub>1</sub>, ..., C<sub>n</sub></i>) entram como coeficientes de um polinômio avaliado no ponto "
-            "secreto <i>H</i> dentro do corpo finito de Galois GF(2<sup>128</sup>), definido pelo polinômio irredutível "
-            "<i>P(x) = x<sup>128</sup> + x<sup>7</sup> + x<sup>2</sup> + x + 1</i>. O resultado do GHASH sofre um XOR com o "
-            "contador inicial cifrado <i>E<sub>K</sub>(J<sub>0</sub>)</i>, formando a <b>Authentication Tag (T)</b> de 16 bytes (128 bits):",
-            bullet_style,
-        )
-    )
-    story.append(Paragraph("T = GHASH<sub>H</sub>(AAD, Ciphertext) ⊕ E<sub>K</sub>(J<sub>0</sub>)", eq_style))
-    story.append(
-        Paragraph(
-            "Na decifragem (arquitetura <i>Encrypt-then-MAC</i>), o destinatário recalcula a tag local <i>T'</i> a partir do "
-            "Nonce, AAD e Ciphertext recebidos antes de liberar qualquer dado. Se um atacante alterar um byte do bloco "
-            "<i>C<sub>i</sub></i> por uma diferença não nula Δ, a diferença entre a tag recalculada e a original em "
-            "GF(2<sup>128</sup>) será <i>ΔT = Δ · H<sup>n-i+2</sup> (mod P(x))</i>. Como um corpo finito não possui divisores "
-            "de zero, o produto de dois elementos não nulos nunca é zero (<i>T' ≠ T</i>). O algoritmo detecta a divergência "
-            "com certeza matemática e aborta a operação lançando a exceção <code>InvalidTag</code>.",
-            body_style,
+            "Como GF(2<sup>128</sup>) é um corpo finito e não admite divisores de zero, o produto de dois elementos não "
+            "nulos (<i>Δ ≠ 0</i> e <i>H ≠ 0</i>) jamais resulta em zero. Portanto, <i>T' ≠ T</i> obrigatoriamente, fazendo "
+            "com que a biblioteca descarte o buffer de saída e lance imediatamente a exceção <code>InvalidTag</code>.",
+            st_corpo,
         )
     )
 
     story.append(
-        Paragraph("2.3. Infraestrutura de Chaves Públicas (PKI), Certificados X.509 e Assinaturas RSA", h2_style)
+        Paragraph("2.3 Infraestrutura de Chaves Públicas (PKI), Certificados X.509 e Assinaturas RSA", st_h2)
     )
     story.append(
         Paragraph(
-            "Para garantir autenticidade de origem e não-repúdio jurídico entre empresas distintas, utiliza-se a assinatura "
-            "digital <b>RSA com SHA-256 (RFC 8017 — PKCS#1)</b> no esquema <i>Hash-then-Sign</i>. Primeiro, o documento passa "
-            "pela função hash <b>SHA-256</b>, que gera um resumo único de 32 bytes (256 bits) dotado de forte <b>efeito "
-            "avalanche</b> (qualquer alteração mínima no texto muda cerca de 50% dos bits do hash) e resistência a colisões. "
-            "No padrão <b>PKCS#1 v1.5</b> (ou de forma probabilística com salt no padrão <b>RSA-PSS</b>), esse resumo e o "
-            "identificador do algoritmo SHA-256 são estruturados em um bloco ASN.1 preenchido até o tamanho da chave "
-            "(256 bytes para RSA 2048 bits), chamado de <i>EM</i>. O signatário aplica sua chave privada <i>(d, N)</i> por "
-            "exponenciação modular (<i>S = EM<sup>d</sup> mod N</i>) para gerar a assinatura; quem verifica aplica a chave "
-            "pública <i>(e, N)</i> sobre a assinatura (<i>EM' = S<sup>e</sup> mod N</i>) e compara o hash extraído com o hash do arquivo.",
-            body_style,
+            "Embora o AES-256-GCM proteja o arquivo em trânsito e em repouso entre sistemas que já compartilham uma chave, "
+            "ele não substitui a assinatura jurídica de um contrato entre empresas distintas. Para garantir que a fornecedora "
+            "não possa repudiar o contrato assinado, emprega-se a assinatura digital <b>RSA com SHA-256</b> segundo o "
+            "paradigma <b>Hash-then-Sign</b> (MORIARTY et al., 2016). Primeiro, o documento passa pela função hash "
+            "<b>SHA-256</b> (NIST, 2015), que comprime o arquivo em um resumo fixo de 256 bits (32 bytes) dotado de "
+            "efeito avalanche e resistência a colisões. No esquema <b>RSASSA-PKCS1-v1_5</b> (ou de modo probabilístico "
+            "no <b>RSA-PSS</b>), o hash de 32 bytes e o identificador (OID) do algoritmo SHA-256 são encapsulados em uma "
+            "estrutura ASN.1 (<code>DigestInfo</code>) com preenchimento até o tamanho do módulo RSA (256 bytes para chaves "
+            "de 2048 bits), formando o bloco codificado <i>EM</i>. A geração da assinatura <i>S</i> com a chave privada "
+            "<i>(d, N)</i> e a sua verificação com a chave pública <i>(e, N)</i> seguem a Equação (4):",
+            st_corpo,
+        )
+    )
+    story.append(
+        bloco_equacao_abnt(
+            "S = EM<sup>d</sup> (mod N) &nbsp;&nbsp;&nbsp; e &nbsp;&nbsp;&nbsp; EM' = S<sup>e</sup> (mod N)",
+            "4",
+            st_eq,
+            st_eq_num,
         )
     )
     story.append(
         Paragraph(
-            "Entretanto, a verificação matemática isolada prova apenas que o documento foi assinado pelo par daquela chave "
-            "pública, mas não informa a quem essa chave pertence no mundo real. É a <b>Infraestrutura de Chaves Públicas "
-            "(PKI / X.509 v3 — RFC 5280)</b> que resolve esse problema: uma <b>Autoridade Certificadora Raiz (Root CA)</b> "
-            "confiável — no nosso estudo, a <code>Miguelito Root CA</code>, instalada na <i>Trust Store</i> da empresa — "
-            "verifica a identidade do fornecedor e assina digitalmente o seu certificado X.509 (<code>parceiro.crt</code>), "
-            "amarrando o nome do titular (<code>Subject: CN = parceiro.miguelito.com.br</code>) à sua chave pública e fixando "
-            "restrições de uso (<code>basicConstraints: CA:FALSE</code> e <code>keyUsage: digitalSignature, nonRepudiation</code>). "
-            "Assim, uma auditoria completa exige sempre duas etapas: validar matematicamente a assinatura do documento e "
-            "validar a cadeia do certificado até a Root CA corporativa, consultando ainda sua não-revogação (via CRL ou OCSP).",
-            body_style,
+            "Todavia, a operação matemática da Equação (4) valida apenas que a assinatura foi produzida pelo detentor da "
+            "chave privada correspondente àquela chave pública, mas não prova a quem pertence essa chave pública. Para "
+            "vincular formalmente uma identidade jurídica a uma chave pública, utiliza-se a <b>Infraestrutura de Chaves "
+            "Públicas (PKI)</b> e os certificados <b>X.509 v3</b> padronizados pela <b>RFC 5280</b> (COOPER et al., 2008). "
+            "A organização institui uma <b>Autoridade Certificadora Raiz (Root CA)</b> — neste estudo, a "
+            "<code>Miguelito Root CA</code> — cujo certificado autoassinado é instalado na <b>Trust Store</b> corporativa. "
+            "A Root CA assina digitalmente o certificado do fornecedor (<code>parceiro.crt</code>), amarrando seu nome "
+            "(<code>Subject: CN = parceiro.miguelito.com.br</code>) à sua chave pública e fixando extensões críticas "
+            "(<code>basicConstraints: CA:FALSE</code> e <code>keyUsage: digitalSignature, nonRepudiation</code>). Dessa "
+            "forma, a auditoria de um contrato assinado exige sempre duas checagens conjuntas: a verificação matemática "
+            "da assinatura e a validação da cadeia X.509 até a Root CA corporativa (incluindo checagem de revogação via CRL ou OCSP).",
+            st_corpo,
         )
     )
 
     # ==========================================================================
     # SEÇÃO 3: METODOLOGIA E AMBIENTE EXPERIMENTAL
     # ==========================================================================
-    story.append(Paragraph("3. Metodologia e Ambiente Experimental", h1_style))
+    story.append(Paragraph("3 METODOLOGIA E AMBIENTE EXPERIMENTAL", st_h1))
     story.append(
         Paragraph(
-            "Os experimentos foram conduzidos em ambiente Linux (Ubuntu 24.04 LTS sob WSL2), utilizando scripts "
-            "idempotentes em Python e GNU Bash para assegurar total reprodutibilidade e registro forense dos resultados. "
-            "A Tabela 1 apresenta a especificação das ferramentas empregadas.",
-            body_style,
+            "Para validar experimentalmente os controles criptográficos exigidos pela Miguelito Segurança e Tecnologia, "
+            "foram construídos dois scripts automatizados em ambiente Linux (Ubuntu 24.04 LTS sob WSL2), registrando "
+            "todos os eventos, resumos SHA-256 e códigos de retorno em arquivos de log. A Tabela 1 detalha a especificação "
+            "do ambiente experimental.",
+            st_corpo,
         )
     )
 
-    dados_amb = [
+    linhas_tab1 = [
         [
-            Paragraph("Componente / Ferramenta", tab_header),
-            Paragraph("Versão / Especificação", tab_header),
-            Paragraph("Finalidade nos Experimentos", tab_header),
+            Paragraph("Componente / Ferramenta", st_tab_cab),
+            Paragraph("Versão / Especificação", st_tab_cab),
+            Paragraph("Finalidade nos Experimentos", st_tab_cab),
         ],
         [
-            Paragraph("Sistema Operacional", tab_cell),
-            Paragraph("Ubuntu 24.04 LTS (Kernel 6.6.87.2 WSL2)", tab_cell),
-            Paragraph("Ambiente POSIX isolado para execução dos scripts e coleta de logs.", tab_cell),
+            Paragraph("Sistema Operacional", st_tab_cel),
+            Paragraph("Ubuntu 24.04 LTS (Kernel 6.6.87.2 WSL2)", st_tab_cel),
+            Paragraph("Ambiente POSIX isolado para execução dos scripts e coleta de logs.", st_tab_cel),
         ],
         [
-            Paragraph("Interpretador Python", tab_cell),
-            Paragraph("Python 3.12.3 / 3.13.14", tab_cell),
-            Paragraph("Execução do módulo parte1_aes_gcm.py com logging e type hints.", tab_cell),
+            Paragraph("Interpretador Python", st_tab_cel),
+            Paragraph("Python 3.12.3 / 3.13.14", st_tab_cel),
+            Paragraph("Execução do módulo parte1_aes_gcm.py com logging e type hints.", st_tab_cel),
         ],
         [
-            Paragraph("Biblioteca Criptográfica", tab_cell),
-            Paragraph("cryptography 41.0.7 / 50.0.2 (AESGCM)", tab_cell),
-            Paragraph("Cifragem autenticada AES-256-GCM e captura de InvalidTag.", tab_cell),
+            Paragraph("Biblioteca Criptográfica", st_tab_cel),
+            Paragraph("cryptography 41.0.7 / 50.0.2 (AESGCM)", st_tab_cel),
+            Paragraph("Cifragem autenticada AES-256-GCM e captura de InvalidTag.", st_tab_cel),
         ],
         [
-            Paragraph("Suíte OpenSSL CLI", tab_cell),
-            Paragraph("OpenSSL 3.0.13 (30 Jan 2024)", tab_cell),
-            Paragraph("Geração de chaves RSA 4096/2048-bit, emissão X.509 v3, dgst e verify.", tab_cell),
+            Paragraph("Suíte OpenSSL CLI", st_tab_cel),
+            Paragraph("OpenSSL 3.0.13 (30 Jan 2024)", st_tab_cel),
+            Paragraph("Geração de chaves RSA 4096/2048-bit, emissão X.509 v3, dgst e verify.", st_tab_cel),
         ],
         [
-            Paragraph("Contrato Comercial Base", tab_cell),
-            Paragraph("contrato_miguelito.txt (2.841 bytes)", tab_cell),
-            Paragraph("Contrato nº 2026/00849-MST (R$ 1.450.000,00 / 12x R$ 120.833,33).", tab_cell),
+            Paragraph("Contrato Comercial Base", st_tab_cel),
+            Paragraph("contrato_miguelito.txt (2.841 bytes)", st_tab_cel),
+            Paragraph("Contrato nº 2026/00849-MST (R$ 1.450.000,00 / 12x R$ 120.833,33).", st_tab_cel),
         ],
     ]
-    tabela_amb = Table(dados_amb, colWidths=[3.8 * cm, 5.4 * cm, 7.8 * cm])
-    tabela_amb.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1D5DB")),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ]
+    story.append(
+        criar_tabela_abnt(
+            1,
+            "Especificação das ferramentas e ambiente experimental da auditoria",
+            linhas_tab1,
+            [3.8 * cm, 5.2 * cm, 7.0 * cm],
+            st_legenda,
+            st_fonte,
         )
     )
-    story.append(tabela_amb)
-    story.append(Spacer(1, 6))
 
     # ==========================================================================
     # SEÇÃO 4: EXPERIMENTOS DA PARTE I (AES-256-GCM)
     # ==========================================================================
-    story.append(Paragraph("4. Experimentos da Parte I: Proteção e Integridade com AES-256-GCM", h1_style))
-    story.append(Paragraph("4.1. Procedimentos de Cifragem, Empacotamento e Decifragem", h2_style))
+    story.append(Paragraph("4 EXPERIMENTOS DA PARTE I: PROTEÇÃO E INTEGRIDADE COM AES-256-GCM", st_h1))
+    story.append(Paragraph("4.1 Procedimentos de Cifragem, Empacotamento e Decifragem", st_h2))
     story.append(
         Paragraph(
-            "O script <code>parte1_aes_gcm.py</code> inicia carregando o arquivo <code>contrato_miguelito.txt</code> "
-            "(2.841 bytes) e registrando seu hash SHA-256 original (<code>9147c03987856361...ffe0cfe67</code>). Em seguida, "
-            "gera uma chave simétrica aleatória de 256 bits (32 bytes) via <code>AESGCM.generate_key(256)</code>, um Nonce "
-            "de 96 bits (12 bytes) via <code>os.urandom(12)</code> e define os Dados Associados (AAD) como "
-            "<code>MATC99-UFBA|MIGUELITO-SEGURANCA-E-TECNOLOGIA|CONTRATO-2026-00849</code>. O arquivo resultante "
-            "<code>contrato_miguelito.enc</code> é gravado em disco com exatos <b>2.869 bytes</b>, estruturados na forma: "
-            "<b>Nonce (12B) || Ciphertext (2.841B) || Authentication Tag (16B)</b>. Na sequência, o script lê o arquivo "
-            "do disco, valida a Tag de 128 bits e recupera <code>contrato_miguelito_recuperado.txt</code>, confirmando "
-            "igualdade estrita byte a byte (<code>original == recuperado: True</code>) e mesmo resumo SHA-256.",
-            body_style,
+            "O script <code>parte1_aes_gcm.py</code> encapsula os artefatos criptográficos na classe "
+            "<code>CriptogramaGCM</code> e executa inicialmente o fluxo legítimo em três etapas. Na primeira etapa, "
+            "o contrato comercial <code>contrato_miguelito.txt</code> é lido em modo binário, totalizando exatos "
+            "<b>2.841 bytes</b> e apresentando o resumo SHA-256 de referência "
+            "<code>9147c03987856361e26a46f794f9588fe0850329cc2eaa28d5f0fd6ffe0cfe67</code>.",
+            st_corpo,
+        )
+    )
+    story.append(
+        Paragraph(
+            "Na segunda etapa, gera-se uma chave simétrica de 256 bits (32 bytes) via <code>AESGCM.generate_key(256)</code>, "
+            "um Nonce aleatório de 96 bits (12 bytes) via <code>os.urandom(12)</code> e define-se o campo de Dados "
+            "Associados (AAD) como <code>MATC99-UFBA|MIGUELITO-SEGURANCA-E-TECNOLOGIA|CONTRATO-2026-00849</code>. O "
+            "criptograma completo é persistido no arquivo <code>contrato_miguelito.enc</code> com <b>2.869 bytes</b> "
+            "(12 bytes de Nonce + 2.841 bytes de Ciphertext + 16 bytes de Authentication Tag). Na terceira etapa, o "
+            "script lê o arquivo <code>.enc</code> do disco, valida a Tag de 128 bits no método <code>AESGCM.decrypt()</code> "
+            "e grava o texto recuperado em <code>contrato_miguelito_recuperado.txt</code>, comprovando igualdade estrita "
+            "de bytes (<code>original == recuperado: True</code>) e preservação integral do hash SHA-256.",
+            st_corpo,
         )
     )
 
-    story.append(Paragraph("4.2. Logs de Execução e Análise dos Cenários de Falha", h2_style))
+    story.append(Paragraph("4.2 Logs de Execução e Análise dos Cenários de Falha", st_h2))
     story.append(
         Paragraph(
-            "Após validar a decifragem legítima, o script executou os dois cenários de falha exigidos. O quadro abaixo "
-            "reproduz o log real capturado em <code>parte1_aes_gcm.log</code>:",
-            body_style,
+            "Concluída a validação legítima, o script submeteu o criptograma aos dois cenários de falha exigidos pela "
+            "especificação: adulteração intencional de 1 byte no texto cifrado (<i>bit-flipping</i>) e tentativa de "
+            "decifragem com chave simétrica incorreta. O Quadro 1 apresenta o log de execução capturado.",
+            st_corpo,
         )
     )
 
-    log_p1 = """[2026-11-04 15:36:36.889] [INFO] === Auditoria Criptográfica - Miguelito Segurança e Tecnologia (Parte I: AES-256-GCM) ===
+    log_quadro1 = """[2026-11-04 15:36:36.889] [INFO] === Auditoria Criptográfica - Miguelito Segurança e Tecnologia (Parte I: AES-256-GCM) ===
 [2026-11-04 15:36:36.894] [INFO] Contrato carregado: contrato_miguelito.txt (2841 bytes)
 [2026-11-04 15:36:36.895] [INFO] SHA-256 original: 9147c03987856361e26a46f794f9588fe0850329cc2eaa28d5f0fd6ffe0cfe67
 [2026-11-04 15:36:36.901] [INFO] Arquivo cifrado salvo em: contrato_miguelito.enc (2869 bytes totais)
@@ -686,288 +920,344 @@ def gerar_pdf(caminho_saida: str = "RELATORIO_TECNICO_MATC99.pdf"):
 [2026-11-04 15:36:36.911] [INFO] Chave correta : 185c3c58dc5153a9b84ddaf0b85ec9933e52f67c44f8d150f42151a460aa8a28
 [2026-11-04 15:36:36.912] [INFO] Chave errada  : 8908f8e494c7d2089963f9ca67836a1d43bfc0a0ea511d3343b5c0a40d8df58e
 [2026-11-04 15:36:36.912] [WARNING] Exceção capturada com sucesso: cryptography.exceptions.InvalidTag"""
-    story.append(caixa_codigo(log_p1, code_style))
-    story.append(Spacer(1, 5))
+    story.append(
+        criar_quadro_abnt(
+            1,
+            "Log de execução da Parte I (AES-256-GCM e captura de InvalidTag)",
+            log_quadro1,
+            st_legenda,
+            st_codigo,
+            st_fonte,
+        )
+    )
 
     story.append(
         Paragraph(
-            "No <b>Teste de Falha 1 (Bit-Flipping)</b>, invertemos apenas 1 bit no byte central do texto cifrado "
-            "(offset 1420 / <code>0x058C</code>, mudando <code>0x4B</code> para <code>0x4A</code> via <code>XOR 0x01</code>). "
-            "Mesmo com a chave correta, o polinômio GHASH em GF(2<sup>128</sup>) produziu uma tag divergente de "
-            "<code>f987ee9b...</code>, lançando <code>cryptography.exceptions.InvalidTag</code> e bloqueando a saída. "
-            "No <b>Teste de Falha 2 (Chave Espúria)</b>, a tentativa de decifrar o arquivo íntegro com a chave incorreta "
-            "<code>8908f8e4...</code> alterou completamente a subchave <i>H'</i> e a máscara do contador inicial, "
-            "resultando novamente no bloqueio imediato via <code>InvalidTag</code>. Ficam assim comprovadas as propriedades "
-            "de <b>confidencialidade</b>, <b>integridade do criptograma</b> e <b>autenticidade simétrica</b>.",
-            body_style,
+            "Conforme registrado no Quadro 1, no <b>Teste de Falha 1</b> foi invertido 1 bit no byte localizado no "
+            "offset 1420 (<code>0x058C</code>, alterando <code>0x4B</code> para <code>0x4A</code> via <code>XOR 0x01</code>). "
+            "Durante a tentativa de decifragem com a chave correta, a avaliação do polinômio GHASH em GF(2<sup>128</sup>) "
+            "resultou em uma tag divergente de <code>f987ee9b...</code>, disparando imediatamente a exceção "
+            "<code>cryptography.exceptions.InvalidTag</code> sem liberar o texto em claro. De forma análoga, no "
+            "<b>Teste de Falha 2</b>, a utilização da chave incorreta <code>8908f8e4...</code> produziu uma subchave "
+            "de hash <i>H'</i> e uma máscara de contador distintas das originais, bloqueando a operação com "
+            "<code>InvalidTag</code>. Comprovam-se, assim, as propriedades de confidencialidade, integridade e "
+            "autenticidade simétrica do criptograma.",
+            st_corpo,
         )
     )
 
     # ==========================================================================
     # SEÇÃO 5: EXPERIMENTOS DA PARTE II (PKI E ASSINATURAS DIGITAIS)
     # ==========================================================================
-    story.append(Paragraph("5. Experimentos da Parte II: Assinaturas Digitais e Cadeia de Certificação", h1_style))
-    story.append(Paragraph("5.1. Estrutura da PKI Simulada (CA Corporativa vs. Rogue CA)", h2_style))
+    story.append(Paragraph("5 EXPERIMENTOS DA PARTE II: ASSINATURAS DIGITAIS E CADEIA DE CERTIFICAÇÃO", st_h1))
+    story.append(Paragraph("5.1 Estrutura da PKI Simulada (CA Corporativa vs. Rogue CA)", st_h2))
     story.append(
         Paragraph(
-            "O script <code>parte2_pki_testes.sh</code> estruturou o diretório <code>pki_miguelito/</code> com duas "
-            "hierarquias X.509 v3 distintas: (1) a <b>Cadeia Corporativa Legítima</b>, encabeçada pela autoridade raiz "
-            "interna <code>Miguelito Root CA</code> (RSA 4096 bits, autoassinado, Serial <code>362E0342...2D96</code>, "
-            "<code>CA:true</code>), que assinou o certificado legítimo do fornecedor <code>parceiro.crt</code> "
+            "O script <code>parte2_pki_testes.sh</code> provisionou no diretório <code>pki_miguelito/</code> duas "
+            "hierarquias de certificação X.509 v3 independentes. Na <b>Cadeia Corporativa Legítima</b>, foi gerada a "
+            "autoridade raiz interna <code>Miguelito Root CA</code> com chave RSA de 4096 bits e certificado autoassinado "
+            "(<code>miguelito_root_ca.crt</code>, Serial <code>362E0342...2D96</code>, <code>basicConstraints: CA:true</code>), "
+            "a qual emitiu e assinou o certificado legítimo do fornecedor <code>parceiro.crt</code> "
             "(<code>CN = parceiro.miguelito.com.br</code>, RSA 2048 bits, Serial <code>21CFB1F0...BCC2</code>, "
-            "<code>CA:FALSE</code>); e (2) a <b>Cadeia Atacante (Rogue CA)</b>, composta por uma autoridade externa não "
-            "confiável (<code>Rogue Root CA</code>, RSA 4096 bits) que emitiu o certificado falso "
-            "<code>parceiro_forjado.crt</code> copiando o mesmo <code>CN = parceiro.miguelito.com.br</code> do fornecedor.",
-            body_style,
+            "<code>CA:FALSE</code>). Paralelamente, na <b>Cadeia Atacante</b>, configurou-se uma autoridade externa não "
+            "confiável (<code>Rogue Root CA</code>, RSA 4096 bits) que emitiu um certificado forjado "
+            "(<code>parceiro_forjado.crt</code>, Serial <code>35D9F02A...7127</code>) preenchido com o mesmo "
+            "<code>CN = parceiro.miguelito.com.br</code> do fornecedor legítimo.",
+            st_corpo,
         )
     )
 
-    story.append(Paragraph("5.2. Análise do Cenário A: Documento Íntegro e Cadeia Válida", h2_style))
+    story.append(Paragraph("5.2 Análise do Cenário A: Documento Íntegro e Cadeia Válida", st_h2))
     story.append(
         Paragraph(
-            "No Cenário A, o contrato original foi assinado com a chave privada legítima do fornecedor e submetido à "
-            "verificação matemática da assinatura e à validação da cadeia contra a <code>Miguelito Root CA</code>:",
-            body_style,
+            "No Cenário A, o documento original foi assinado com a chave privada legítima do fornecedor e auditado em "
+            "duas etapas: verificação matemática da assinatura contra a chave pública do certificado e validação da "
+            "cadeia X.509 contra a <code>Miguelito Root CA</code>, conforme detalhado no Quadro 2.",
+            st_corpo,
         )
     )
-    bloco_a = """# Comandos executados no Cenário A:
+
+    log_quadro2 = """# Comandos executados no Cenário A:
 $ openssl dgst -sha256 -sign pki_miguelito/parceiro_legitimo/parceiro.key -out cenario_a.sig contrato_miguelito.txt
 $ openssl dgst -sha256 -verify pki_miguelito/parceiro_legitimo/parceiro_pub.pem -signature cenario_a.sig contrato_miguelito.txt
 $ openssl verify -CAfile pki_miguelito/root_ca/miguelito_root_ca.crt pki_miguelito/parceiro_legitimo/parceiro.crt
 
-# Saída capturada em parte2_pki_testes.log:
+# Evidências coletadas em parte2_pki_testes.log:
 [2026-11-04 15:36:40.697] [INFO] Assinatura gerada: cenario_a.sig (256 bytes)
 [2026-11-04 15:36:40.721] [INFO] Verificação da assinatura (openssl dgst -verify): Verified OK
 [2026-11-04 15:36:40.743] [INFO] Validação da cadeia contra Miguelito Root CA: pki_miguelito/parceiro_legitimo/parceiro.crt: OK
 [2026-11-04 15:36:40.750] [INFO] Resultado Cenário A -> DECISÃO: ACEITAR"""
-    story.append(caixa_codigo(bloco_a, code_style))
-    story.append(Spacer(1, 4))
+    story.append(
+        criar_quadro_abnt(
+            2,
+            "Comandos e log de verificação do Cenário A (Assinatura e Cadeia Legítimas)",
+            log_quadro2,
+            st_legenda,
+            st_codigo,
+            st_fonte,
+        )
+    )
     story.append(
         Paragraph(
-            "<b>Análise e Justificativa (DECISÃO: ACEITAR):</b> O retorno <code>Verified OK</code> comprova que o hash "
-            "SHA-256 recuperado da assinatura <code>cenario_a.sig</code> (256 bytes) coincide exatamente com o hash de "
-            "<code>contrato_miguelito.txt</code>. Simultaneamente, <code>parceiro.crt: OK</code> confirma que o certificado "
-            "do signatário foi emitido pela <code>Miguelito Root CA</code>. Estão atendidos os critérios de integridade, "
-            "autenticidade de identidade e não-repúdio.",
-            body_style,
+            "O resultado <code>Verified OK</code> comprova a integridade matemática do contrato após a assinatura, "
+            "enquanto <code>parceiro.crt: OK</code> atesta que o certificado do signatário pertence à cadeia de confiança "
+            "da <code>Miguelito Root CA</code>, justificando a decisão de <b>ACEITAR</b> o documento.",
+            st_corpo,
         )
     )
 
-    story.append(Paragraph("5.3. Análise do Cenário B: Adulteração de Conteúdo Pós-Assinatura", h2_style))
+    story.append(Paragraph("5.3 Análise do Cenário B: Adulteração de Conteúdo Pós-Assinatura", st_h2))
     story.append(
         Paragraph(
-            "No Cenário B, simulou-se uma fraude financeira alterando 1 byte no contrato após a assinatura (mudança da "
-            "parcela mensal de <code>R$ 120.833,33</code> para <code>R$ 920.833,33</code> via <code>sed</code>), "
-            "verificando-o em seguida contra a assinatura legítima colhida no Cenário A:",
-            body_style,
+            "No Cenário B, simulou-se a adulteração de 1 caractere no valor da parcela mensal do contrato após a "
+            "assinatura (de <code>R$ 120.833,33</code> para <code>R$ 920.833,33</code>), submetendo o documento modificado "
+            "à verificação contra a assinatura original colhida no Cenário A. O Quadro 3 exibe os resultados obtidos.",
+            st_corpo,
         )
     )
-    bloco_b = """# Comandos executados no Cenário B:
+
+    log_quadro3 = """# Comandos executados no Cenário B:
 $ sed 's/R\\$ 120\\.833,33/R\\$ 920.833,33/g' contrato_miguelito.txt > contrato_adulterado.txt
 $ openssl dgst -sha256 -verify pki_miguelito/parceiro_legitimo/parceiro_pub.pem -signature cenario_a.sig contrato_adulterado.txt
 
-# Saída capturada em parte2_pki_testes.log:
+# Evidências coletadas em parte2_pki_testes.log:
 [2026-11-04 15:36:40.824] [INFO] SHA-256 original   : 9147c03987856361e26a46f794f9588fe0850329cc2eaa28d5f0fd6ffe0cfe67
 [2026-11-04 15:36:40.832] [INFO] SHA-256 adulterado : 817d7fae7346f151320d2469a8546c52edefa478219948e1efbb75edf9f0a8d2
 [2026-11-04 15:36:40.856] [WARN] Código de saída do OpenSSL: 1
   40C71E4E407F0000:error:02000068:rsa routines:ossl_rsa_verify:bad signature:../crypto/rsa/rsa_sign.c:430:
   Verification failure
 [2026-11-04 15:36:40.868] [WARN] Resultado Cenário B -> DECISÃO: REJEITAR"""
-    story.append(caixa_codigo(bloco_b, code_style))
-    story.append(Spacer(1, 4))
+    story.append(
+        criar_quadro_abnt(
+            3,
+            "Comandos e log de verificação do Cenário B (Adulteração Pós-Assinatura)",
+            log_quadro3,
+            st_legenda,
+            st_codigo,
+            st_fonte,
+        )
+    )
     story.append(
         Paragraph(
-            "<b>Análise e Justificativa (DECISÃO: REJEITAR):</b> A troca do dígito '1' por '9' acionou o efeito avalanche "
-            "do SHA-256, alterando completamente o resumo de 256 bits (de <code>9147c039...</code> para "
-            "<code>817d7fae...</code>). Ao abrir o bloco PKCS#1 v1.5 da assinatura com a chave pública legítima, a rotina "
-            "<code>ossl_rsa_verify</code> constatou a divergência entre o hash assinado e o hash do arquivo modificado, "
-            "retornando <code>bad signature / Verification failure</code> (Exit Code 1).",
-            body_style,
+            "Conforme demonstrado no Quadro 3, a alteração de um único dígito provocou o efeito avalanche na função "
+            "SHA-256, mudando o resumo de <code>9147c039...</code> para <code>817d7fae...</code>. Como o hash extraído "
+            "do bloco PKCS#1 v1.5 da assinatura não confere com o novo hash calculado, a rotina <code>ossl_rsa_verify</code> "
+            "falhou com <code>bad signature / Verification failure</code> (Exit Code 1), determinando a decisão de "
+            "<b>REJEITAR</b> o contrato.",
+            st_corpo,
         )
     )
 
-    story.append(Paragraph("5.4. Análise do Cenário C: Certificado Emitido por Autoridade Não Confiável", h2_style))
+    story.append(Paragraph("5.4 Análise do Cenário C: Certificado Emitido por Autoridade Não Confiável", st_h2))
     story.append(
         Paragraph(
-            "No Cenário C, o contrato original íntegro foi assinado com a chave privada falsa "
-            "(<code>parceiro_forjado.key</code>) vinculada ao certificado emitido pela <code>Rogue CA</code>:",
-            body_style,
+            "No Cenário C, o documento original íntegro foi assinado com a chave privada do certificado falso "
+            "(<code>parceiro_forjado.key</code>) emitido pela <code>Rogue CA</code>. O Quadro 4 apresenta o contraste "
+            "entre a verificação matemática isolada e a validação da cadeia de certificação.",
+            st_corpo,
         )
     )
-    bloco_c = """# Comandos executados no Cenário C:
+
+    log_quadro4 = """# Comandos executados no Cenário C:
 $ openssl dgst -sha256 -sign pki_miguelito/parceiro_forjado/parceiro_forjado.key -out cenario_c_forjado.sig contrato_miguelito.txt
 $ openssl dgst -sha256 -verify pki_miguelito/parceiro_forjado/parceiro_forjado_pub.pem -signature cenario_c_forjado.sig contrato_miguelito.txt
 $ openssl verify -CAfile pki_miguelito/root_ca/miguelito_root_ca.crt pki_miguelito/parceiro_forjado/parceiro_forjado.crt
 
-# Saída capturada em parte2_pki_testes.log:
+# Evidências coletadas em parte2_pki_testes.log:
 [2026-11-04 15:36:40.927] [INFO] 1) Verificação matemática com a chave pública do certificado falso: Verified OK
 [2026-11-04 15:36:40.949] [WARN] 2) Validação da cadeia contra a Trust Store da Miguelito (Exit Code 2):
   C = BR, ST = Sao Paulo, L = Sao Paulo, O = Parceiro Infraestrutura e Cloud Computing Ltda, OU = Contratos Digitais B2B, CN = parceiro.miguelito.com.br
   error 20 at 0 depth lookup: unable to get local issuer certificate
   error pki_miguelito/parceiro_forjado/parceiro_forjado.crt: verification failed
 [2026-11-04 15:36:40.962] [WARN] Resultado Cenário C -> DECISÃO: REJEITAR"""
-    story.append(caixa_codigo(bloco_c, code_style))
-    story.append(Spacer(1, 4))
+    story.append(
+        criar_quadro_abnt(
+            4,
+            "Comandos e log de verificação do Cenário C (Certificado Forjado por Rogue CA)",
+            log_quadro4,
+            st_legenda,
+            st_codigo,
+            st_fonte,
+        )
+    )
     story.append(
         Paragraph(
-            "<b>Diferenciação entre Integridade e Autenticidade (DECISÃO: REJEITAR):</b> Embora a verificação matemática "
-            "isolada retorne <code>Verified OK</code> (pois o documento está íntegro em relação ao par de chaves gerado "
-            "pelo próprio atacante), a validação de cadeia falha imediatamente no nível 0 (<code>at 0 depth lookup</code>) "
-            "com o erro <code>error 20: unable to get local issuer certificate</code>. Isso ocorre porque o emissor do "
-            "certificado (<code>Rogue Root CA</code>) não consta na <i>Trust Store</i> da Miguelito Segurança e Tecnologia, "
-            "caracterizando tentativa de falsificação ideológica (<i>spoofing</i> de certificado).",
-            body_style,
+            "A análise do Quadro 4 evidencia a diferença crítica entre integridade matemática e autenticidade da origem: "
+            "a primeira verificação retorna <code>Verified OK</code> porque a assinatura foi conferida contra a própria "
+            "chave pública falsa que a gerou. Todavia, na segunda etapa (<code>openssl verify</code>), a validação falha "
+            "no nível 0 da cadeia (<code>error 20 at 0 depth lookup: unable to get local issuer certificate</code>, "
+            "Exit Code 2), pois a <code>Rogue Root CA</code> não pertence à <i>Trust Store</i> da Miguelito Segurança e "
+            "Tecnologia, impondo a decisão pericial de <b>REJEITAR</b> o documento.",
+            st_corpo,
         )
     )
 
     # ==========================================================================
     # SEÇÃO 6: MATRIZ DE DECISÃO E RECOMENDAÇÕES DE GOVERNANÇA
     # ==========================================================================
-    story.append(Paragraph("6. Matriz de Decisão e Recomendações de Governança", h1_style))
-    story.append(Paragraph("6.1. Matriz Comparativa de Auditoria", h2_style))
+    story.append(Paragraph("6 MATRIZ DE DECISÃO E RECOMENDAÇÕES DE GOVERNANÇA", st_h1))
+    story.append(Paragraph("6.1 Matriz Comparativa de Auditoria", st_h2))
+    story.append(
+        Paragraph(
+            "A Tabela 2 sintetiza os resultados obtidos nos experimentos das Partes I e II, relacionando a integridade "
+            "matemática do arquivo, a confiabilidade da identidade/chave e o veredito final de auditoria.",
+            st_corpo,
+        )
+    )
 
-    dados_matriz = [
+    linhas_tab2 = [
         [
-            Paragraph("Cenário Auditado", tab_header),
-            Paragraph("Integridade Matemática", tab_header),
-            Paragraph("Confiabilidade da Identidade / Chave", tab_header),
-            Paragraph("Evidência Técnica Capturada", tab_header),
-            Paragraph("Veredito", tab_header),
+            Paragraph("Cenário Auditado", st_tab_cab),
+            Paragraph("Integridade Matemática", st_tab_cab),
+            Paragraph("Confiabilidade da Chave / CA", st_tab_cab),
+            Paragraph("Evidência Técnica Capturada", st_tab_cab),
+            Paragraph("Veredito", st_tab_cab),
         ],
         [
-            Paragraph("Parte I — Fluxo Normal", tab_cell),
-            Paragraph("Válida (Tag GCM e SHA-256 OK)", tab_cell),
-            Paragraph("Válida (Chave simétrica correta)", tab_cell),
-            Paragraph("2.841 bytes recuperados sem erro", tab_cell),
-            Paragraph("<b>ACEITAR</b>", tab_cell_center),
+            Paragraph("Parte I – Fluxo Normal", st_tab_cel),
+            Paragraph("Válida (Tag GCM e SHA-256 OK)", st_tab_cel),
+            Paragraph("Válida (Chave simétrica correta)", st_tab_cel),
+            Paragraph("2.841 bytes recuperados sem erro", st_tab_cel),
+            Paragraph("<b>ACEITAR</b>", st_tab_cel_centro),
         ],
         [
-            Paragraph("Parte I — Bit-Flipping", tab_cell),
-            Paragraph("Inválida (GHASH diverge)", tab_cell),
-            Paragraph("Válida (Chave simétrica correta)", tab_cell),
-            Paragraph("cryptography.exceptions.InvalidTag", tab_cell),
-            Paragraph("<b>REJEITAR</b>", tab_cell_center),
+            Paragraph("Parte I – Bit-Flipping", st_tab_cel),
+            Paragraph("Inválida (GHASH diverge)", st_tab_cel),
+            Paragraph("Válida (Chave simétrica correta)", st_tab_cel),
+            Paragraph("cryptography.exceptions.InvalidTag", st_tab_cel),
+            Paragraph("<b>REJEITAR</b>", st_tab_cel_centro),
         ],
         [
-            Paragraph("Parte I — Chave Espúria", tab_cell),
-            Paragraph("Não verificável (H' ≠ H)", tab_cell),
-            Paragraph("Inválida (Chave não autorizada)", tab_cell),
-            Paragraph("cryptography.exceptions.InvalidTag", tab_cell),
-            Paragraph("<b>REJEITAR</b>", tab_cell_center),
+            Paragraph("Parte I – Chave Espúria", st_tab_cel),
+            Paragraph("Não verificável (H' ≠ H)", st_tab_cel),
+            Paragraph("Inválida (Chave não autorizada)", st_tab_cel),
+            Paragraph("cryptography.exceptions.InvalidTag", st_tab_cel),
+            Paragraph("<b>REJEITAR</b>", st_tab_cel_centro),
         ],
         [
-            Paragraph("Parte II — Cenário A", tab_cell),
-            Paragraph("Válida (Verified OK)", tab_cell),
-            Paragraph("Válida (Miguelito Root CA: OK)", tab_cell),
-            Paragraph("Exit Code 0 em dgst e verify", tab_cell),
-            Paragraph("<b>ACEITAR</b>", tab_cell_center),
+            Paragraph("Parte II – Cenário A", st_tab_cel),
+            Paragraph("Válida (Verified OK)", st_tab_cel),
+            Paragraph("Válida (Miguelito Root CA: OK)", st_tab_cel),
+            Paragraph("Exit Code 0 em dgst e verify", st_tab_cel),
+            Paragraph("<b>ACEITAR</b>", st_tab_cel_centro),
         ],
         [
-            Paragraph("Parte II — Cenário B", tab_cell),
-            Paragraph("Inválida (Verification failure)", tab_cell),
-            Paragraph("Válida (Certificado legítimo)", tab_cell),
-            Paragraph("ossl_rsa_verify:bad signature (Exit 1)", tab_cell),
-            Paragraph("<b>REJEITAR</b>", tab_cell_center),
+            Paragraph("Parte II – Cenário B", st_tab_cel),
+            Paragraph("Inválida (Verification failure)", st_tab_cel),
+            Paragraph("Válida (Certificado legítimo)", st_tab_cel),
+            Paragraph("ossl_rsa_verify:bad signature (Exit 1)", st_tab_cel),
+            Paragraph("<b>REJEITAR</b>", st_tab_cel_centro),
         ],
         [
-            Paragraph("Parte II — Cenário C", tab_cell),
-            Paragraph("Válida (Verified OK isolado)", tab_cell),
-            Paragraph("Inválida (Fora da Trust Store)", tab_cell),
-            Paragraph("error 20: unable to get local issuer (Exit 2)", tab_cell),
-            Paragraph("<b>REJEITAR</b>", tab_cell_center),
+            Paragraph("Parte II – Cenário C", st_tab_cel),
+            Paragraph("Válida (Verified OK isolado)", st_tab_cel),
+            Paragraph("Inválida (Fora da Trust Store)", st_tab_cel),
+            Paragraph("error 20: unable to get issuer (Exit 2)", st_tab_cel),
+            Paragraph("<b>REJEITAR</b>", st_tab_cel_centro),
         ],
     ]
-    tabela_matriz = Table(dados_matriz, colWidths=[3.3 * cm, 3.5 * cm, 3.8 * cm, 4.3 * cm, 2.1 * cm])
-    tabela_matriz.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1D5DB")),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ]
+    story.append(
+        criar_tabela_abnt(
+            2,
+            "Matriz comparativa de decisão dos cenários auditados nas Partes I e II",
+            linhas_tab2,
+            [3.2 * cm, 3.3 * cm, 3.6 * cm, 3.9 * cm, 2.0 * cm],
+            st_legenda,
+            st_fonte,
+            centralizar_ultima=True,
         )
     )
-    story.append(tabela_matriz)
-    story.append(Spacer(1, 6))
 
-    story.append(Paragraph("6.2. Recomendações Técnicas para a Miguelito Segurança e Tecnologia", h2_style))
+    story.append(Paragraph("6.2 Recomendações Técnicas para a Miguelito Segurança e Tecnologia", st_h2))
     story.append(
         Paragraph(
-            "• <b>1. Validação Obrigatória em Duas Etapas e Fixação de Trust Store:</b> O pipeline de recebimento de "
-            "contratos deve executar primeiro <code>openssl verify -CAfile miguelito_root_ca.crt</code> antes de conferir "
-            "a assinatura RSA, bloqueando qualquer certificado emitido por CAs externas não homologadas.",
-            bullet_style,
+            "Com base nos achados periciais, recomendam-se quatro medidas técnicas para a governança criptográfica da "
+            "Miguelito Segurança e Tecnologia Ltda.:",
+            st_corpo,
         )
     )
     story.append(
         Paragraph(
-            "• <b>2. Guarda da Root CA Offline em HSM e Uso de CA Intermediária:</b> Manter a chave privada RSA 4096 bits "
-            "da <code>Miguelito Root CA</code> isolada em hardware (HSM FIPS 140-3) e criar uma Autoridade Certificadora "
-            "Intermediária para assinar os certificados operacionais dos parceiros comerciais.",
-            bullet_style,
+            "a) <b>validação obrigatória em duas etapas e fixação da Trust Store:</b> o fluxo automatizado de recebimento "
+            "de contratos deve executar obrigatoriamente a validação da cadeia X.509 (<code>openssl verify -CAfile "
+            "miguelito_root_ca.crt</code>) antes de conferir a assinatura RSA, bloqueando certificados emitidos por CAs "
+            "externas não homologadas;",
+            st_alinea,
         )
     )
     story.append(
         Paragraph(
-            "• <b>3. Verificação de Revogação (CRL / OCSP) e Extensões X.509 v3:</b> Publicar Listas de Certificados "
-            "Revogados (CRL) e ativar consulta OCSP (<code>-crl_check</code>) para recusar chaves privadas comprometidas "
-            "antes do vencimento, além de exigir <code>CA:FALSE</code> e <code>keyUsage: digitalSignature, nonRepudiation</code>.",
-            bullet_style,
+            "b) <b>isolamento da Root CA em HSM e adoção de CA Intermediária:</b> manter a chave privada RSA de 4096 bits "
+            "da <code>Miguelito Root CA</code> isolada <i>offline</i> em módulo HSM (FIPS 140-3) e instituir uma "
+            "Autoridade Certificadora Intermediária para emitir os certificados operacionais dos parceiros B2B;",
+            st_alinea,
         )
     )
     story.append(
         Paragraph(
-            "• <b>4. Proibição de Reuso de Nonce e Rotação de Chaves no AES-GCM:</b> Garantir que cada operação no "
-            "AES-256-GCM utilize um Nonce de 12 bytes único gerado por CSPRNG e rotacionar periodicamente as chaves "
-            "simétricas, prevenindo a exposição do <i>keystream</i> e da subchave <i>H</i> do GHASH.",
-            bullet_style,
+            "c) <b>verificação de revogação (CRL / OCSP) e restrição de uso de chave:</b> publicar Listas de Certificados "
+            "Revogados (CRL) e exigir consulta OCSP (<code>-crl_check</code>) para barrar chaves privadas comprometidas "
+            "antes da expiração, além de validar a presença de <code>CA:FALSE</code> e <code>keyUsage: digitalSignature, "
+            "nonRepudiation</code>;",
+            st_alinea,
+        )
+    )
+    story.append(
+        Paragraph(
+            "d) <b>gerenciamento seguro de Nonces e rotação de chaves no AES-256-GCM:</b> garantir que cada operação de "
+            "cifragem utilize um Nonce de 12 bytes exclusivo gerado via CSPRNG e rotacionar periodicamente as chaves "
+            "simétricas, prevenindo ataques de reutilização de Nonce que exporiam o <i>keystream</i> e a subchave <i>H</i> do GHASH.",
+            st_alinea,
         )
     )
 
     # ==========================================================================
-    # SEÇÃO 7: CONCLUSÃO E SEÇÃO 8: REFERÊNCIAS BIBLIOGRÁFICAS
+    # SEÇÃO 7: CONCLUSÃO
     # ==========================================================================
-    story.append(Paragraph("7. Conclusão", h1_style))
+    story.append(Paragraph("7 CONCLUSÃO", st_h1))
     story.append(
         Paragraph(
-            "O trabalho experimental realizado para o cenário da <b>Miguelito Segurança e Tecnologia Ltda.</b> demonstrou "
-            "na prática como a cifragem simétrica autenticada e a infraestrutura de chaves públicas atuam de forma "
-            "complementar na proteção de contratos digitais. Na Parte I, comprovou-se que o modo <b>AES-256-GCM</b> "
-            "elimina a maleabilidade do modo contador puro por meio do polinômio <b>GHASH</b> em GF(2<sup>128</sup>), "
-            "bloqueando instantaneamente tanto a adulteração de 1 bit no texto cifrado quanto o uso de chaves espúrias "
-            "através da exceção <code>InvalidTag</code>.",
-            body_style,
+            "O trabalho experimental desenvolvido para o cenário da <b>Miguelito Segurança e Tecnologia Ltda.</b> "
+            "permitiu demonstrar na prática como a cifragem simétrica autenticada e a infraestrutura de chaves públicas "
+            "atuam de forma complementar na proteção de contratos digitais. Nos testes da Parte I, comprovou-se que o "
+            "modo <b>AES-256-GCM</b> elimina a maleabilidade linear do modo contador puro por meio do polinômio "
+            "<b>GHASH</b> em GF(2<sup>128</sup>), bloqueando instantaneamente tanto a adulteração de 1 bit no texto "
+            "cifrado quanto a tentativa de leitura com chave espúria através da exceção <code>InvalidTag</code>.",
+            st_corpo,
         )
     )
     story.append(
         Paragraph(
-            "Na Parte II, os testes com o OpenSSL evidenciaram a distinção fundamental entre integridade matemática de "
-            "dados e autenticidade da identidade do signatário. Enquanto o Cenário B mostrou que qualquer fraude pós-assinatura "
-            "em valores contratuais é barrada pelo efeito avalanche do <b>SHA-256</b> (<code>Verification failure</code>), "
-            "o Cenário C provou que uma assinatura matematicamente válida (<code>Verified OK</code>) deve ser rejeitada "
-            "quando seu certificado não possui vínculo de confiança com a <code>Miguelito Root CA</code> "
-            "(<code>error 20: unable to get local issuer certificate</code>). A adoção conjunta desses dois controles "
-            "restabelece integralmente a confidencialidade, a integridade, a autenticidade e o não-repúdio nas operações da empresa.",
-            body_style,
+            "Nos experimentos da Parte II, a implementação da PKI com o OpenSSL evidenciou a fronteira entre integridade "
+            "de conteúdo e autenticidade da identidade do signatário. Enquanto o Cenário B comprovou que qualquer alteração "
+            "pós-assinatura em cláusulas financeiras invalida o resumo <b>SHA-256</b> (<code>Verification failure</code>), "
+            "o Cenário C demonstrou que uma assinatura matematicamente válida (<code>Verified OK</code>) deve ser "
+            "rejeitada quando o certificado que transporta a chave pública não possui vínculo de confiança com a "
+            "<code>Miguelito Root CA</code> (<code>error 20 at 0 depth lookup: unable to get local issuer certificate</code>). "
+            "Conclui-se que a combinação do transporte cifrado em AES-256-GCM com a validação estrita da cadeia X.509 "
+            "assegura integralmente a confidencialidade, a integridade, a autenticidade e o não-repúdio exigidos pela auditoria.",
+            st_corpo,
         )
     )
 
-    story.append(Paragraph("8. Referências Bibliográficas", h1_style))
-    refs = [
-        "1. <b>DWORKIN, Morris J.</b> <i>Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC</i>. NIST Special Publication (SP) 800-38D, National Institute of Standards and Technology, Gaithersburg, MD, Nov. 2007.",
-        "2. <b>COOPER, D.; SANTESSON, S.; FARRELL, S.; BOEYEN, S.; HOUSLEY, R.; POLK, W.</b> <i>Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile</i>. IETF RFC 5280, Maio 2008.",
-        "3. <b>MORIARTY, K.; KALISKI, B.; JONSSON, J.; RUSCH, A.</b> <i>PKCS #1: RSA Cryptography Specifications Version 2.2</i>. IETF RFC 8017, Nov. 2016.",
-        "4. <b>NATIONAL INSTITUTE OF STANDARDS AND TECHNOLOGY (NIST).</b> <i>Secure Hash Standard (SHS)</i>. FIPS PUB 180-4, U.S. Department of Commerce, Ago. 2015.",
-        "5. <b>STALLINGS, William.</b> <i>Criptografia e Segurança de Redes: Princípios e Práticas</i>. 8ª ed. São Paulo: Pearson Education, 2023.",
-        "6. <b>PYTHON CRYPTOGRAPHIC AUTHORITY (PyCA).</b> <i>Cryptography Documentation — Authenticated Encryption with Associated Data (AESGCM)</i>. Disponível em: https://cryptography.io/en/latest/hazmat/primitives/aead/.",
+    # ==========================================================================
+    # SEÇÃO 8: REFERÊNCIAS BIBLIOGRÁFICAS (NBR 6023)
+    # ==========================================================================
+    story.append(Paragraph("8 REFERÊNCIAS BIBLIOGRÁFICAS", st_h1))
+    referencias_nbr6023 = [
+        "COOPER, D.; SANTESSON, S.; FARRELL, S.; BOEYEN, S.; HOUSLEY, R.; POLK, W. <b>Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile</b>. [S. l.]: Internet Engineering Task Force (IETF), RFC 5280, maio 2008. Disponível em: &lt;https://datatracker.ietf.org/doc/html/rfc5280&gt;. Acesso em: 04 nov. 2026.",
+        "DWORKIN, Morris J. <b>Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC</b>. Gaithersburg, MD: National Institute of Standards and Technology (NIST), Special Publication 800-38D, nov. 2007.",
+        "MORIARTY, K.; KALISKI, B.; JONSSON, J.; RUSCH, A. <b>PKCS #1: RSA Cryptography Specifications Version 2.2</b>. [S. l.]: Internet Engineering Task Force (IETF), RFC 8017, nov. 2016. Disponível em: &lt;https://datatracker.ietf.org/doc/html/rfc8017&gt;. Acesso em: 04 nov. 2026.",
+        "NATIONAL INSTITUTE OF STANDARDS AND TECHNOLOGY (NIST). <b>FIPS PUB 180-4: Secure Hash Standard (SHS)</b>. Gaithersburg, MD: U.S. Department of Commerce, ago. 2015.",
+        "PYTHON CRYPTOGRAPHIC AUTHORITY (PyCA). <b>Cryptography Documentation: Authenticated Encryption with Associated Data (AESGCM)</b>. [S. l.]: PyCA, 2026. Disponível em: &lt;https://cryptography.io/en/latest/hazmat/primitives/aead/&gt;. Acesso em: 04 nov. 2026.",
+        "STALLINGS, William. <b>Criptografia e segurança de redes: princípios e práticas</b>. 8. ed. São Paulo: Pearson Education, 2023.",
     ]
-    for r in refs:
-        story.append(Paragraph(r, bullet_style))
+    for ref in referencias_nbr6023:
+        story.append(Paragraph(ref, st_ref))
 
-    doc.build(story, canvasmaker=CanvasRelatorioAcademico)
-    print(f"PDF gerado com sucesso em: {caminho_saida}")
+    # Duas passagens (multiBuild) para resolver automaticamente os números de página no Sumário
+    doc.multiBuild(story)
+    print(f"PDF ABNT gerado com sucesso em: {caminho_saida}")
 
 
 if __name__ == "__main__":
