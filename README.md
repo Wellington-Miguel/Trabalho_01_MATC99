@@ -1,29 +1,39 @@
 # Trabalho 01 — Criptografia Aplicada: Proteção, Assinaturas Digitais e Certificados
 
 **Disciplina:** MATC99 — Segurança e Auditoria de Sistemas de Informação  
+**Professor:** Joselito Júnior  
 **Instituição:** Universidade Federal da Bahia (UFBA) — Instituto de Computação  
+**Aluno:** Wellington Miguel de Jesus Silva  
 **Empresa Auditada (Cenário):** Miguelito Segurança e Tecnologia Ltda.  
 
 ---
 
-## Sobre o Trabalho
+## Sobre o Pacote de Experimentos (`.ZIP`)
 
-Este repositório reúne os códigos, certificados, logs de execução e o relatório técnico do Trabalho 01 da disciplina MATC99. O objetivo foi simular uma auditoria prática sobre os fluxos de troca de contratos digitais da empresa **Miguelito Segurança e Tecnologia**, validando controles criptográficos em duas partes:
+Este arquivo `.ZIP` reúne todos os entregáveis práticos solicitados nos itens **B**, **C** e **D** da especificação do Trabalho 01 (o **Item A — Relatório Técnico em PDF** é enviado separadamente no campo próprio do formulário):
 
-1. **Parte I (`parte1_aes_gcm.py`):** Cifragem e validação de integridade do contrato comercial (`contrato_xyzw.txt`) usando **AES-256-GCM** (com Nonce de 12 bytes e Authentication Tag de 16 bytes), além dos testes de falha para adulteração de 1 byte no texto cifrado (*bit-flipping*) e tentativa de leitura com chave incorreta (`InvalidTag`).
-2. **Parte II (`parte2_pki_testes.sh`):** Estruturação de uma PKI local com OpenSSL contendo a autoridade raiz interna da empresa (`Miguelito Root CA`, RSA 4096 bits), emissão do certificado legítimo do parceiro comercial (`parceiro.miguelito.com.br`), criação de uma CA paralela não autorizada (`Rogue CA`) e bateria de testes para os Cenários A, B e C.
+- **Item B (Scripts e logs utilizados nos experimentos):**
+  - `parte1_aes_gcm.py` e `parte1_aes_gcm.log`
+  - `parte2_pki_testes.sh` e `parte2_pki_testes.log`
+- **Item C (Documentos fictícios, assinaturas, certificados e chaves públicas necessários à verificação):**
+  - Contrato original (`contrato_miguelito.txt`), criptograma AES-256-GCM (`contrato_miguelito.enc`), contrato recuperado (`contrato_miguelito_recuperado.txt`) e contrato adulterado (`pki_miguelito/cenarios_auditoria/contrato_adulterado.txt`).
+  - Assinaturas digitais (`cenario_a.sig` e `cenario_c_forjado.sig`).
+  - Certificados X.509 v3 (`miguelito_root_ca.crt`, `parceiro.crt`, `rogue_root_ca.crt`, `parceiro_forjado.crt`).
+  - Chaves públicas em formato PEM (`parceiro_pub.pem`, `parceiro_forjado_pub.pem`) e respectivos pares de chaves/CSRs/arquivos `.cnf`.
+- **Item D (Instruções para reprodução dos procedimentos):**
+  - Este documento (`README.md`).
 
 ---
 
 ## Pré-requisitos
 
-Os scripts foram desenvolvidos e testados em ambiente Linux (Ubuntu 24.04 via WSL2). Para rodar os testes, você vai precisar de:
+Os scripts foram desenvolvidos e testados em ambiente Linux (Ubuntu 24.04 LTS via WSL2). Para reproduzir os experimentos, são necessários:
 
-- **Python 3.10+** com o pacote `cryptography` instalado
+- **Python 3.10+** com a biblioteca `cryptography` instalada
 - **OpenSSL 3.x**
-- Utilitários padrão do ambiente Linux (`bash`, `sed`, `awk`, `sha256sum`, `wc`)
+- Utilitários padrão POSIX (`bash`, `sed`, `awk`, `sha256sum`, `wc`)
 
-No Ubuntu/Debian (ou WSL), basta instalar os pacotes com:
+No Ubuntu/Debian (ou WSL), instale as dependências com:
 
 ```bash
 sudo apt update && sudo apt install -y python3 python3-pip python3-cryptography openssl coreutils
@@ -37,96 +47,116 @@ pip install cryptography
 
 ---
 
-## Como Executar os Testes
+## Instruções para Reprodução dos Procedimentos
 
-### 1. Rodando a Parte I (AES-256-GCM)
+### 1. Reproduzindo a Parte I (Proteção e Integridade com AES-256-GCM)
 
-Na pasta raiz do projeto, execute:
+Na pasta raiz onde o `.ZIP` foi extraído, execute:
 
 ```bash
 python3 parte1_aes_gcm.py
 ```
 
-O script vai ler o `contrato_miguelito.txt`, gerar o arquivo cifrado `contrato_miguelito.enc` (contendo `Nonce + Ciphertext + Tag`), recuperar o documento em `contrato_miguelito_recuperado.txt` conferindo o hash SHA-256, simular os dois casos de falha (`InvalidTag`) e salvar toda a saída em `parte1_aes_gcm.log`.
+**O que o script executa:**
+1. Carrega o documento comercial fictício `contrato_miguelito.txt` (`2.841 bytes`) e calcula seu hash SHA-256.
+2. Criptografa o documento com **AES-256-GCM** (chave de 32 bytes, Nonce de 12 bytes e Tag de 16 bytes), gravando `contrato_miguelito.enc` (`2.869 bytes`).
+3. Descriptografa `contrato_miguelito.enc` com a chave correta, salvando `contrato_miguelito_recuperado.txt` e comprovando integridade byte a byte (`original == recuperado: True`).
+4. Executa os dois testes de falha exigidos (adulteração de 1 byte no *ciphertext* no offset `1420` e tentativa de decifragem com chave incorreta), capturando a exceção `cryptography.exceptions.InvalidTag` e gravando o log em `parte1_aes_gcm.log`.
 
-### 2. Rodando a Parte II (PKI e Assinaturas com OpenSSL)
+---
 
-Dê permissão de execução ao script Bash e rode:
+### 2. Reproduzindo a Parte II (Assinaturas Digitais e Certificados X.509)
+
+Para executar a automação completa da Parte II (que recria as CAs, emite os certificados e roda os Cenários A, B e C), execute:
 
 ```bash
 chmod +x parte2_pki_testes.sh
 ./parte2_pki_testes.sh
 ```
 
-> **Observação (Windows/WSL):** Se o script tiver sido salvo com fim de linha padrão Windows (`CRLF`), converta para `LF` antes de rodar:
+> **Observação (Windows/WSL):** Caso o script tenha sido editado no Windows com quebras de linha `CRLF`, converta-o para `LF` antes da execução:
 > ```bash
 > sed -i 's/\r$//' parte2_pki_testes.sh && ./parte2_pki_testes.sh
 > ```
 
-O script recria do zero a pasta `pki_miguelito/` com todas as chaves, certificados e assinaturas, exibindo no terminal (e salvando em `parte2_pki_testes.log`) os resultados dos Cenários A, B e C.
-
 ---
 
-## Estrutura de Diretórios do Projeto
+### 3. Verificação Manual Direta dos Artefatos Já Gerados (Cenários A, B e C)
 
-A organização dos arquivos para entrega no pacote `.ZIP` segue a estrutura abaixo:
+Caso deseje apenas conferir diretamente as assinaturas, certificados e chaves públicas já incluídos na pasta `pki_miguelito/` sem sobrescrevê-los:
 
-```text
-Trabalho_01_MATC99/
-├── README.md                                   # Instruções de execução e organização dos arquivos
-├── RELATORIO_TECNICO_MATC99.md                 # Relatório técnico completo (Seções 1 a 8 + texto do Forms)
-├── contrato_miguelito.txt                      # Contrato comercial base da Miguelito Segurança e Tecnologia
-├── contrato_miguelito.enc                      # Arquivo cifrado pelo AES-256-GCM (12B Nonce + CT + 16B Tag)
-├── contrato_miguelito_recuperado.txt           # Contrato recuperado após decifragem legítima
-├── parte1_aes_gcm.py                           # Script Python da Parte I (AES-256-GCM e testes de falha)
-├── parte1_aes_gcm.log                          # Log de execução da Parte I com timestamps
-├── parte2_pki_testes.sh                        # Script Bash da Parte II (PKI OpenSSL e Cenários A, B e C)
-├── parte2_pki_testes.log                       # Log de execução da Parte II
-└── pki_miguelito/                              # Diretório gerado pelo script da Parte II
-    ├── root_ca/
-    │   ├── root_ca.cnf                         # Configuração OpenSSL da Miguelito Root CA
-    │   ├── miguelito_root_ca.key               # Chave privada RSA 4096 bits da CA interna
-    │   ├── miguelito_root_ca.crt               # Certificado autoassinado da Miguelito Root CA
-    │   └── miguelito_root_ca.srl               # Controle de serial da CA
-    ├── parceiro_legitimo/
-    │   ├── parceiro.cnf                        # Configuração X.509 v3 do parceiro comercial
-    │   ├── parceiro.key                        # Chave privada RSA 2048 bits do parceiro legítimo
-    │   ├── parceiro.csr                        # CSR do parceiro legítimo
-    │   ├── parceiro.crt                        # Certificado assinado pela Miguelito Root CA
-    │   └── parceiro_pub.pem                    # Chave pública extraída do certificado legítimo
-    ├── rogue_ca/
-    │   ├── rogue_ca.cnf                        # Configuração da CA não confiável (Rogue CA)
-    │   ├── rogue_root_ca.key                   # Chave privada RSA 4096 bits da Rogue CA
-    │   ├── rogue_root_ca.crt                   # Certificado autoassinado da Rogue CA
-    │   └── rogue_root_ca.srl                   # Controle de serial da Rogue CA
-    ├── parceiro_forjado/
-    │   ├── parceiro_forjado.key                # Chave privada RSA 2048 bits usada pelo atacante
-    │   ├── parceiro_forjado.csr                # CSR falso com o mesmo CN do parceiro
-    │   ├── parceiro_forjado.crt                # Certificado forjado assinado pela Rogue CA
-    │   └── parceiro_forjado_pub.pem            # Chave pública extraída do certificado forjado
-    └── cenarios_auditoria/
-        ├── contrato_miguelito.txt              # Cópia do contrato original usada nos testes A e C
-        ├── contrato_adulterado.txt             # Contrato com valor da parcela adulterado (Cenário B)
-        ├── cenario_a.sig                       # Assinatura RSA-SHA256 legítima (256 bytes)
-        └── cenario_c_forjado.sig               # Assinatura RSA-SHA256 gerada com a chave falsa
+#### Cenário A — Documento original, assinado corretamente e com certificado confiável (Decisão: ACEITAR)
+```bash
+# 1. Verificar assinatura digital com a chave pública do parceiro legítimo (Esperado: Verified OK)
+openssl dgst -sha256 -verify pki_miguelito/parceiro_legitimo/parceiro_pub.pem \
+    -signature pki_miguelito/cenarios_auditoria/cenario_a.sig \
+    pki_miguelito/cenarios_auditoria/contrato_miguelito.txt
+
+# 2. Validar cadeia de certificação contra a Miguelito Root CA (Esperado: parceiro.crt: OK)
+openssl verify -CAfile pki_miguelito/root_ca/miguelito_root_ca.crt \
+    pki_miguelito/parceiro_legitimo/parceiro.crt
+```
+
+#### Cenário B — Documento alterado após a assinatura (Decisão: REJEITAR)
+```bash
+# Verificar assinatura original contra o contrato com valor adulterado (Esperado: Verification failure)
+openssl dgst -sha256 -verify pki_miguelito/parceiro_legitimo/parceiro_pub.pem \
+    -signature pki_miguelito/cenarios_auditoria/cenario_a.sig \
+    pki_miguelito/cenarios_auditoria/contrato_adulterado.txt
+```
+
+#### Cenário C — Assinatura matematicamente válida, mas certificado emitido por CA não confiável (Decisão: REJEITAR)
+```bash
+# 1. Verificar assinatura com a chave pública do certificado forjado (Esperado: Verified OK)
+openssl dgst -sha256 -verify pki_miguelito/parceiro_forjado/parceiro_forjado_pub.pem \
+    -signature pki_miguelito/cenarios_auditoria/cenario_c_forjado.sig \
+    pki_miguelito/cenarios_auditoria/contrato_miguelito.txt
+
+# 2. Validar cadeia do certificado forjado contra a Miguelito Root CA
+# (Esperado: error 20 at 0 depth lookup: unable to get local issuer certificate)
+openssl verify -CAfile pki_miguelito/root_ca/miguelito_root_ca.crt \
+    pki_miguelito/parceiro_forjado/parceiro_forjado.crt
 ```
 
 ---
 
-## Gerando o Arquivo `.ZIP` para Entrega
+## Estrutura de Arquivos Contidos no `.ZIP`
 
-Para compactar todos os arquivos necessários em um único `.zip`:
-
-```bash
-zip -r Trabalho_01_MATC99.zip \
-    README.md \
-    RELATORIO_TECNICO_MATC99.md \
-    contrato_miguelito.txt \
-    contrato_miguelito.enc \
-    contrato_miguelito_recuperado.txt \
-    parte1_aes_gcm.py \
-    parte1_aes_gcm.log \
-    parte2_pki_testes.sh \
-    parte2_pki_testes.log \
-    pki_miguelito/
+```text
+Trabalho_01_MATC99.zip
+├── README.md                                   # Instruções para reprodução dos procedimentos (Item D)
+├── contrato_miguelito.txt                      # Documento comercial fictício original (Item C)
+├── contrato_miguelito.enc                      # Contrato criptografado com AES-256-GCM (Item C)
+├── contrato_miguelito_recuperado.txt           # Contrato recuperado após descriptografia (Item C)
+├── parte1_aes_gcm.py                           # Script Python dos experimentos da Parte I (Item B)
+├── parte1_aes_gcm.log                          # Evidências e logs de execução da Parte I (Item B)
+├── parte2_pki_testes.sh                        # Script Bash/OpenSSL dos experimentos da Parte II (Item B)
+├── parte2_pki_testes.log                       # Evidências e logs de execução da Parte II (Item B)
+└── pki_miguelito/                              # Certificados, chaves públicas e assinaturas (Item C)
+    ├── root_ca/
+    │   ├── root_ca.cnf                         # Configuração OpenSSL da Miguelito Root CA
+    │   ├── miguelito_root_ca.key               # Chave privada RSA 4096 bits da CA confiável
+    │   ├── miguelito_root_ca.crt               # Certificado autoassinado da Miguelito Root CA
+    │   └── miguelito_root_ca.srl               # Controle de número de série da CA
+    ├── parceiro_legitimo/
+    │   ├── parceiro.cnf                        # Configuração X.509 v3 do parceiro legítimo
+    │   ├── parceiro.key                        # Chave privada RSA 2048 bits do parceiro legítimo
+    │   ├── parceiro.csr                        # Requisição de assinatura (CSR) do parceiro
+    │   ├── parceiro.crt                        # Certificado legítimo assinado pela Miguelito Root CA
+    │   └── parceiro_pub.pem                    # Chave pública do parceiro legítimo
+    ├── rogue_ca/
+    │   ├── rogue_ca.cnf                        # Configuração da CA não confiável (Rogue CA)
+    │   ├── rogue_root_ca.key                   # Chave privada RSA 4096 bits da Rogue CA
+    │   ├── rogue_root_ca.crt                   # Certificado autoassinado da Rogue CA
+    │   └── rogue_root_ca.srl                   # Controle de número de série da Rogue CA
+    ├── parceiro_forjado/
+    │   ├── parceiro_forjado.key                # Chave privada RSA 2048 bits falsa
+    │   ├── parceiro_forjado.csr                # CSR falso em nome do parceiro
+    │   ├── parceiro_forjado.crt                # Certificado falso emitido pela Rogue CA
+    │   └── parceiro_forjado_pub.pem            # Chave pública extraída do certificado falso
+    └── cenarios_auditoria/
+        ├── contrato_miguelito.txt              # Documento original assinado nos Cenários A e C
+        ├── contrato_adulterado.txt             # Documento alterado após a assinatura (Cenário B)
+        ├── cenario_a.sig                       # Assinatura digital legítima (Cenário A)
+        └── cenario_c_forjado.sig               # Assinatura digital com certificado falso (Cenário C)
 ```
